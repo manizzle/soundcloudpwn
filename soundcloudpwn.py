@@ -43,7 +43,10 @@ def get_songs(dude, page, riptype):
     else:
         trackurl = base + search + dude + '&page=' + str(page)
     print >>sys.stderr, '[+] The page selected was %s' % trackurl
-    page = requests.get(trackurl, headers=getheaders)
+    try:
+        page = requests.get(trackurl, headers=getheaders)
+    except IOError, e:
+        die()
     page = lxml.html.fromstring(page.text)
     for script in page.xpath('//script[@type = "text/javascript"]'):
         if not script.text == None:
@@ -61,11 +64,11 @@ def get_max_pages(dude, riptype):
         fullurl = base + search + dude 
     else:
         fullurl = base + dude + artist 
-    page = requests.get(fullurl, headers=getheaders)
     try:
-        arefs = lxml.html.fromstring(page.text).xpath('//div[@class="pagination"]/a')
+        page = requests.get(fullurl, headers=getheaders)
     except IOError, e:
         die()
+    arefs = lxml.html.fromstring(page.text).xpath('//div[@class="pagination"]/a')
     pages = [int(guide.text) for guide in arefs if guide.text.isdigit()]
     if not pages:
         return 1
