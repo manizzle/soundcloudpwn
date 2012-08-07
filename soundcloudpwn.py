@@ -22,10 +22,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import urllib2, json, lxml.html, sys, os, os.path
+import json, lxml.html, requests
+import sys, os
+
+getheaders = {"User-Agent" : 
+           "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0; BOIE9;ENUSMSNIP)",
+              }
 
 def die():
-    print '[*] No tracks by this artist found'
+    print >>sys.stderr, '[*] No tracks by this artist found'
     sys.exit(0)
     
 def get_songs(dude, page, riptype):
@@ -37,8 +42,9 @@ def get_songs(dude, page, riptype):
         trackurl = base + dude + artist + str(page)
     else:
         trackurl = base + search + dude + '&page=' + str(page)
-    print '[+] The page selected was %s' % trackurl
-    page = lxml.html.parse(trackurl)
+    print >>sys.stderr, '[+] The page selected was %s' % trackurl
+    page = requests.get(trackurl, headers=getheaders)
+    page = lxml.html.fromstring(page.text)
     for script in page.xpath('//script[@type = "text/javascript"]'):
         if not script.text == None:
             if "media.soundcloud.com/stream" in script.text:
@@ -48,41 +54,41 @@ def get_songs(dude, page, riptype):
     return ret
 
 def get_max_pages(dude, riptype):
-    base = 'http://souncloud.com/'
+    base = 'http://soundcloud.com/'
     artist = '/tracks'
     search = 'search?q[fulltext]='
     if riptype == 'search':
         fullurl = base + search + dude 
     else:
         fullurl = base + dude + artist 
-    try :
-        pages = [int(guide.text) for guide in\
-         lxml.html.parse(fullurl).xpath('//div[@class="pagination"]/a')\
-         if guide.text.isdigit()]
+    page = requests.get(fullurl, headers=getheaders)
+    try:
+        arefs = lxml.html.fromstring(page.text).xpath('//div[@class="pagination"]/a')
     except IOError, e:
         die()
+    pages = [int(guide.text) for guide in arefs if guide.text.isdigit()]
     if not pages:
         return 1
     else:
         return max(pages)
 
 def rip_mp3(target, song):
-    print "[*] Ripping Song: " + song['title'].strip() + "..."
+    print >>sys.stderr, "[*] Ripping Song: " + song['title'].strip() + "..."
     f = open(target + '/' + clean(song['title']) + '.mp3', 'wb')
-    f.write(urllib2.urlopen(song['streamUrl']).read())
+    f.write(requests.get(song['streamUrl'], headers=getheaders).raw.read())
     f.close()
 
 def pwn(riptype, target):
     if not os.path.isdir(target):
-        print "[*] Making output directory " + target + ". ..."
+        print >>sys.stderr, "[*] Making output directory " + target + ". ..."
         os.mkdir(target)
     else:
-        print "[*] Using existing directory ..."
-    print "[*] Ripping  Artist: " + target + "..."
+        print >>sys.stderr, "[*] Using existing directory ..."
+    print >>sys.stderr, "[*] Ripping  Artist: " + target + "..."
     maxpages = get_max_pages(target, riptype)
-    print "[*] Parsing " + str(maxpages) + " pages..."
+    print >>sys.stderr, "[*] Parsing " + str(maxpages) + " pages..."
     for page in xrange(1, maxpages + 1):
-        print "[*] Fetching Page# " + str(page)
+        print >>sys.stderr, "[*] Fetching Page# " + str(page)
         for song in get_songs(target, page, riptype):
             rip_mp3(target, song)
 
@@ -92,6 +98,6 @@ def clean(url):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print """[*] USAGE IS python soundcloudpwn.py [search | artist] [artist]"""
+        print >>sys.stderr, """[*] USAGE IS python soundcloudpwn.py [search | artist] [artist]"""
     else:
         pwn(sys.argv[1], sys.argv[2])
