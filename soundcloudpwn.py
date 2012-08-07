@@ -78,7 +78,10 @@ def get_max_pages(dude, riptype):
 def rip_mp3(target, song):
     print >>sys.stderr, "[*] Ripping Song: " + song['title'].strip() + "..."
     f = open(target + '/' + clean(song['title']) + '.mp3', 'wb')
-    f.write(requests.get(song['streamUrl'], headers=getheaders).raw.read())
+    try:
+        f.write(requests.get(song['streamUrl'], headers=getheaders).raw.read())
+    except IOError, e:
+        die()
     f.close()
 
 def pwn(riptype, target):
