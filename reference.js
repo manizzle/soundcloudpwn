@@ -18,37 +18,28 @@ scdlr.clientId = 'b45b1aa10f1ac2941910a7f0d10f8e28';
 
 scdlr.addDownloadButton= function ( sound )
 {	
-	if( scdlr.JQ(sound).find("."+scdlr.c).length == 0 && scdlr.JQ(sound).find(".sc-button-download").length == 0 )//No download button found, lets add one.
-	{	
+
 		var downloadLink = scdlr.JQ(document.createElement("a") );
-		anchor = scdlr.JQ(sound).find(".soundTitle__title").eq(0);
 		var resolveUrl = null, buttonClass=null;
+
+		anchor = scdlr.JQ(sound).find(".soundTitle__title").eq(0);
+
+
 		if( scdlr.JQ(sound).is(".single") )
-		{
 			resolveUrl = document.location.href;
-			buttonClass = 'sc-button sc-button-medium sc-button-icon sc-button-responsive '+scdlr.c;			
-		}
 		else
-		{
 			resolveUrl = 'https://soundcloud.com'+anchor.attr("href");
-			buttonClass = 'sc-button sc-button-small sc-button-icon sc-button-responsive '+scdlr.c;
-		}
+
 
 		urlSplitArray = resolveUrl.split("/");
 		lastElement = urlSplitArray.pop();
 		secretToken = '';
 		
-		if( lastElement.substr(0,2) == 's-')//Add secret token if present.
+		if( lastElement.substr(0,2) == 's-' )//Add secret token if present.
 		{
 			secretToken = lastElement;
 		}
 
-		downloadLink.attr({ 
-			'title': 'Download ',
-			'target': '_blank',
-			'class': buttonClass
-		});
-		downloadLink.css({"background-image": 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAATklEQVR42s2SwQkAIAwD3SkLOYqbZNT6Eh+BWIWCj3veFUJbRDxTIwOIxccyAG7BQpGTAcplDXhRZR/g7WBUUWUX6Oknyazt5HGi8rfzTM/tP8ufxmlTAAAAAElFTkSuQmCC")', "background-position":"center center", "background-repeat": "no-repeat"});
 
 		scdlr.JQ.getJSON("https://api.soundcloud.com/resolve.json?callback=?", {url: resolveUrl, client_id:scdlr.clientId, secret_token:secretToken}, function(track)
 		{				
@@ -58,12 +49,18 @@ scdlr.addDownloadButton= function ( sound )
 				downloadLink.attr("href", data.http_mp3_128_url);
 			});
 		});
-		scdlr.JQ(sound).find(".soundActions .sc-button-group:first").eq(0).append(downloadLink);
-	}
+
+		scdlr.JQ(sound).find(".sc-button-group:first").eq(0).append(downloadLink);
+
 }
 
 function myMain()
 {	
+	scdlr.myUnsafeWindow = unsafeWindow;
+
+	scdlr.JQ = scdlr.myUnsafeWindow.jQuery;
+	scdlr.c = Math.random().toString(36).substring(7);
+
 	scdlr.JQ(".sound").not(".playlist").each( function()
 	{
 		scdlr.addDownloadButton( this );
@@ -80,31 +77,5 @@ function myMain()
 	scdlr.JQ(window).off("mousedown",'a[href*="-media.soundcloud."]');
 }
 
-function GM_wait() 
-{
-	if( typeof unsafeWindow != 'undefined')
-	{
-		scdlr.myUnsafeWindow = unsafeWindow;
-	}
-	else if( window.navigator.vendor && window.navigator.vendor.match(/Google/) || ( window.navigator.appName && window.navigator.appName.match(/Opera/) )  )
-	{	
-		scdlr.myUnsafeWindow = (function()
-		{
-			var el = document.createElement('p');
-			el.setAttribute('onclick', 'return window;');
-			return el.onclick();
-		}());
-	}
-	if(typeof scdlr.myUnsafeWindow.jQuery == 'undefined')
-	{ 
-		window.setTimeout(GM_wait,200); 
-	}
-	else 
-	{
-		scdlr.JQ = scdlr.myUnsafeWindow.jQuery;
-		scdlr.c = Math.random().toString(36).substring(7);
-		myMain();
-		setInterval(myMain, 3000);//Check for new tracks and update with download links every 3 seconds.
-	}
-}
-GM_wait();
+
+myMain();
