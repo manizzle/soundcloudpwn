@@ -26,7 +26,7 @@ def get_tracks(username):
         whouwant = whouwant.decode("utf-8")
     except  UnicodeEncodeError as e:
         print >>sys.stderr, "Username of %s is foobar" % (repr(whouwant))
-        return
+        return []
     yy = "http://api.soundcloud.com/resolve.json?url=http://soundcloud.com/%s&client_id=%s" % (urllib.quote(whouwant), someones_client_id)
     zz = requests.head(yy)
     # the given username was not a valid account name
@@ -38,13 +38,10 @@ def get_tracks(username):
     reqzz = requests.head(yy)
     if reqzz.status_code == 404:
         print >>sys.stderr, "Could not find track listing for user %s" % whouwant
-        return 
+        return []
     zz = urllib2.urlopen(yy).read()
     zz_uj = ujson.loads(zz)
-    if zz_uj == None:
-        return []
-    else:
-        return zz_uj
+    return zz_uj
 
 
 def shame(all_the_things=False):
