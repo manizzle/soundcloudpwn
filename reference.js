@@ -58,10 +58,7 @@ scdlr.addDownloadButton= function ( sound )
 
 }
 
-function myMain()
-{    
 
-}
 
 scdlr.myUnsafeWindow = unsafeWindow;
 scdlr.JQ = scdlr.myUnsafeWindow.jQuery;
@@ -82,5 +79,6 @@ if( scdlr.JQ(".trackList").length > 0 )//We have a playlist, add download link t
             }
     );
 }
+
 scdlr.JQ(document).off("mousedown");
 scdlr.JQ(window).off("mousedown",'a[href*="-media.soundcloud."]');
