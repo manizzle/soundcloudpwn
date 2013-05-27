@@ -41,7 +41,10 @@ def get_tracks(username):
         return 
     zz = urllib2.urlopen(yy).read()
     zz_uj = ujson.loads(zz)
-    return zz_uj
+    if zz_uj == None:
+        return []
+    else:
+        return zz_uj
 
 
 def shame(all_the_things=False):
@@ -60,7 +63,7 @@ def shame(all_the_things=False):
             id_username = obj.xpath("//username")[0].text
             id_account_type = obj.xpath("//plan")[0].text
             print >>sys.stderr, id_account_type
-            tracks = get_tracks(id_username)            
+            tracks = get_tracks(id_username)
             for c in tracks:
                 if not c['downloadable']:
                     print >>sys.stderr, '\t'  + repr(c['title']) +  "    " + c['stream_url'] + "?client_id=%s" % (someones_client_id)
