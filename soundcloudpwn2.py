@@ -83,8 +83,11 @@ def get_lucky_url(name, site=None):
         site = site.decode("utf-8")
         name = name.decode("utf-8")
         xx = base + urllib.quote("site:%s %s" % (site, name))
-    x = ujson.loads(urllib2.urlopen(xx).read())['responseData']['results'][1]['unescapedUrl']
-    return x
+    x = ujson.loads(urllib2.urlopen(xx).read())['responseData']['results']
+    if not x:
+        return None
+
+    return x[1]['unescapedUrl']
     
 def get_tracks(username):
     if ' ' in username:
@@ -93,7 +96,7 @@ def get_tracks(username):
     try:
         whouwant = whouwant.decode("utf-8")
     except  UnicodeEncodeError as e:
-        d("[E] Username of %s is foobar" % (repr(whouwant)))
+        d("[E] Username of %s is foobar\n" % (repr(whouwant)))
         return []
     yy = "http://api.soundcloud.com/resolve.json?url=http://soundcloud.com/%s&client_id=%s" % (urllib.quote(whouwant), someones_client_id)
     zz = requests.head(yy)
@@ -101,7 +104,11 @@ def get_tracks(username):
     if  zz.status_code == 404:
         # http, null, soundcloud, artist, ...
         d("[E] could not find artist %s, asking google for best match\n" % shorten(whouwant, 20))
-        whouwant = get_lucky_url(whouwant, "soundcloud.com").split("/")[3].decode("utf-8")
+        whouwant = get_lucky_url(whouwant, "soundcloud.com")
+        if not whouwant:
+            d("[E] google doesn't even know who you want\n")
+            return []
+        whouwant = whouwant.split("/")[3].decode("utf-8")
     d("[+] User: %s ->\n" % whouwant)
     yy = "http://api.soundcloud.com/resolve.json?url=http://soundcloud.com/%s/tracks&client_id=%s" % (urllib.quote(whouwant), someones_client_id)
     reqzz = requests.head(yy)
@@ -129,13 +136,13 @@ def shame(all_the_things=False):
             hobj = lxml.html.document_fromstring(zz)
             id_username = hobj.xpath("//username")[0].text
             id_account_type = hobj.xpath("//plan")[0].text
-            d("ID Failures:  " + str(failures) + "\n")
+            d("[+] ID Failures:  " + str(failures) + "\n")
             failures = 0
             d(id_account_type + "\n")
             tracks = get_tracks(id_username)
             for c in tracks:
                 if not c['downloadable']:
-                    d('\t'  + repr(c['title'])[2:-1] +  "    " + c['stream_url'] + "?client_id=%s" % (someones_client_id))
+                    d('\t'  + repr(c['title'])[2:-1] +  "    " + c['stream_url'] + "?client_id=%s\n" % (someones_client_id))
             if tracks:
                 ctr +=1
             if not all_the_things and ctr == SHAME_LIMIT:
@@ -153,10 +160,10 @@ def shame(all_the_things=False):
 def make_artist_dir(target):
     cleaned = clean(target)
     if not os.path.isdir(cleaned):
-        d("[+] Making new directory " + cleaned)
+        d("[+] Making new directory " + cleaned + "\n")
         os.mkdir(cleaned)
     else:
-        d("[+] Using existing directory " + cleaned)
+        d("[+] Using existing directory " + cleaned + "\n")
     return cleaned            
 
 def clean(url):
@@ -183,7 +190,7 @@ def dl_sc(username):
     tracks = get_tracks(username)
     numtracks = len(tracks)
     if(numtracks == 0):        
-        d("[+] No tracks found")
+        d("[+] No tracks found\n")
         return []
     os.chdir(make_artist_dir(username))
     for i,c in enumerate(tracks):
