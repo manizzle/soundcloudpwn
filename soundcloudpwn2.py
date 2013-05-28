@@ -55,10 +55,13 @@ class App:
         self.goz = Button(frame, text="Go", command=lambda : self.go(self.master))
         self.goz.pack(side=LEFT)
 
-        self.shamez = Button(frame, text="Shame", command=self.shamez)
-        self.shamez.pack(side=LEFT)
+        self.shame = Button(frame, text="Shame Somethings", command= lambda : self.shamez(False))
+        self.shame.pack(side=LEFT)
 
-    def shamez(self, all_the_things=False):
+        self.shame2 = Button(frame, text="Shame Allthethings", command= lambda : self.shamez(True))
+        self.shame2.pack(side=LEFT)
+
+    def shamez(self, all_the_things):
         t = threading.Thread(target=shame, args = (all_the_things,))
         t.daemon = True
         t.start()
@@ -80,6 +83,7 @@ def d(st):
         m.update_idletasks()
     else:
         print >>sys.stderr, st
+    return st
 
 def get_lucky_url(name, site=None):
     base  = 'http://ajax.googleapis.com/ajax/services/search/web?v=1.0&q='
@@ -128,6 +132,7 @@ def get_tracks(username):
 
 
 def shame(all_the_things=False):
+    f = open("shame.txt", "w")
     serch = (x for x in xrange(0, 999999999))
     ctr = 0
     failures = 0
@@ -143,13 +148,14 @@ def shame(all_the_things=False):
             hobj = lxml.html.document_fromstring(zz)
             id_username = hobj.xpath("//username")[0].text
             id_account_type = hobj.xpath("//plan")[0].text
-            d("[+] ID Failures:  " + str(failures) + "\n")
+            f.write(d("[+] ID Failures:  " + str(failures) + "\n"))
             failures = 0
-            d(id_account_type + "\n")
+            f.write(d(id_account_type + "\n"))
             tracks = get_tracks(id_username)
+            f.write("[+] User: %s ->\n" % id_username)
             for c in tracks:
                 if not c['downloadable']:
-                    d('\t'  + repr(c['title'])[2:-1] +  "    " + c['stream_url'] + "?client_id=%s\n" % (someones_client_id))
+                    f.write(d('\t'  + repr(c['title'])[2:-1] +  "    " + c['stream_url'] + "?client_id=%s\n" % (someones_client_id)))
             if tracks:
                 ctr +=1
             if not all_the_things and ctr == SHAME_LIMIT:
@@ -163,6 +169,7 @@ def shame(all_the_things=False):
                 break
         else:
             i = random.randrange(999999999)
+    f.close()
 
 def make_artist_dir(target):
     cleaned = clean(target)
