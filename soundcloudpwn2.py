@@ -73,7 +73,6 @@ class App:
         t = threading.Thread(target=dl_sc, args = (artist,))
         t.daemon = True
         t.start()
-        dl_sc(artist)
 
 def d(st):
     global obj
