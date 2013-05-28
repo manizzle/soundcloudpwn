@@ -5,6 +5,8 @@
 
 import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math
 from Tkinter import *
+from multiprocessing import Process
+
 import tkSimpleDialog, threading
 someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
 #someones_client_id = "7dd86f1df1b1f7f08683ffc8b5a39b23"
@@ -57,7 +59,6 @@ class App:
         self.shamez.pack(side=LEFT)
 
     def shamez(self, all_the_things=False):
-        shame(all_the_things)
         t = threading.Thread(target=shame, args = (all_the_things,))
         t.daemon = True
         t.start()
