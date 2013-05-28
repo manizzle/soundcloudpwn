@@ -61,6 +61,8 @@ class App:
 
     def go(self, master):
         artist = tkSimpleDialog.askstring("SoundCloudPwn", "Artist:", initialvalue="whouwant?", parent=master)
+        if not artist:
+            return
         dl_sc(artist)
 
 def d(st):
@@ -85,6 +87,8 @@ def get_lucky_url(name, site=None):
     return x
     
 def get_tracks(username):
+    if ' ' in username:
+        username = username.replace(' ', '-').lower()
     whouwant = username
     try:
         whouwant = whouwant.decode("utf-8")
@@ -125,13 +129,9 @@ def shame(all_the_things=False):
             hobj = lxml.html.document_fromstring(zz)
             id_username = hobj.xpath("//username")[0].text
             id_account_type = hobj.xpath("//plan")[0].text
-            d("ID Failures" + str(failures) + "\n")
+            d("ID Failures:  " + str(failures) + "\n")
             failures = 0
             d(id_account_type + "\n")
-            if " " in id_username:
-                print id_username
-                id_username = id_username.replace(" ", "-").lower()
-
             tracks = get_tracks(id_username)
             for c in tracks:
                 if not c['downloadable']:
