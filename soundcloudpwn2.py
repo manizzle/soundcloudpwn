@@ -3,10 +3,12 @@
 # http://help.soundcloud.com/customer/portal/articles/243684-can-people-download-my-sounds-
 # Lies, Lies, and more Lies ;p
 
-import os, urllib2, sys, urllib, ujson, requests, lxml.html, random
+import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math
 someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
 #someones_client_id = "7dd86f1df1b1f7f08683ffc8b5a39b23"
 SHAME_LIMIT = 10
+progress_bar_size = 64
+
 
 def get_lucky_url(name, site=None):
     base  = 'http://ajax.googleapis.com/ajax/services/search/web?v=1.0&q='
@@ -75,19 +77,61 @@ def shame(all_the_things=False):
                 break
         else:
             i = random.randrange(999999999)
-            
+
+def make_artist_dir(target):
+    cleaned = clean(target)
+    if not os.path.isdir(cleaned):
+        print >>sys.stderr, "[+] Making output directory " + cleaned + ". ..."
+        os.mkdir(cleaned)
+    else:
+        print >>sys.stderr, "[+] Using existing directory " + cleaned + ". ..."
+    return cleaned            
+
+def clean(url):
+    return ''.join([letter for letter in url.replace(' ', '_') if letter.isalpha() or
+        letter.isdigit() or letter == '_'])
+
+def convertSize(size):
+   size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+   i = int(math.floor(math.log(size,1024)))
+   p = math.pow(1024,i)
+   s = round(size/p,2)
+   if (s > 0):
+       return '%s %s' % (s,size_name[i])
+   else:
+       return '0B'
+
+def shorten(string, length):
+    result = string[:length]
+    if(len(result) == length):
+        return result[:length-3].ljust(length, '.')
+    return result
 
 def dl_sc(username):
     tracks = get_tracks(username)
-    if not os.path.isdir(username):
-        os.mkdir(username)
-    os.chdir(username)
-    for c  in tracks:
-        print >>sys.stderr, "\tDownloading %s %s" % (repr(c['title']) ,  "thank you %s!" % username if c['downloadable'] else " cause %s sucks!" % username)
+    numtracks = len(tracks)
+    os.chdir(make_artist_dir(username))
+    for i,c in enumerate(tracks):
+        print >>sys.stderr, "[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(c['title'])[2:], 38) ,  "thank you %s!" % shorten(username, 15) if c['downloadable'] else "cause %s sux!" % shorten(username, 15))
         full_url = c['stream_url'] + "?client_id=%s" % (someones_client_id)
-        zz = urllib2.urlopen(full_url).read()
-        f = open(c['title'].replace(' ', '_') + ".mp3", "w")
-        f .write(zz)
+        zz = urllib2.urlopen(full_url)
+        file_size = int(zz.info().getheaders("Content-Length")[0])
+        f = open(c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
+        file_size_dl = 0
+        dl_block_sz = file_size / progress_bar_size
+        print "[+] %s " % convertSize(file_size).ljust(9, ' '),
+        while True:
+            buffer = zz.read(dl_block_sz);
+            if not buffer:
+                break;
+            file_size_dl += len(buffer)
+            f.write(buffer)
+            # because newlines/spaces are dumb
+            sys.stdout.write('.')
+            sys.stdout.flush()
+            
+        print
+        #f.write(zz.read())
         f.close()
     os.chdir("..")
     
@@ -97,4 +141,3 @@ if __name__ == "__main__":
         #shame()
     elif len(sys.argv) == 2:
         dl_sc(sys.argv[1])
-
