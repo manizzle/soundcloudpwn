@@ -4,10 +4,69 @@
 # Lies, Lies, and more Lies ;p
 
 import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math
+from Tkinter import *
 someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
 #someones_client_id = "7dd86f1df1b1f7f08683ffc8b5a39b23"
 SHAME_LIMIT = 10
 progress_bar_size = 64
+
+
+class ScrolledText(Text):
+    def __init__(self, frame, **kw):
+        self.frame = frame
+        self.vbar = Scrollbar(self.frame)
+        self.vbar.pack(side=RIGHT, fill=Y)
+
+        kw.update({'yscrollcommand': self.vbar.set})
+        Text.__init__(self, self.frame, **kw)
+        self.pack(side=TOP, fill=BOTH, expand=True)
+        self.vbar['command'] = self.yview
+
+        # Copy geometry methods of self.frame without overriding Text
+        # methods -- hack!
+        text_meths = vars(Text).keys()
+        methods = vars(Pack).keys() + vars(Grid).keys() + vars(Place).keys()
+        methods = set(methods).difference(text_meths)
+
+        for m in methods:
+            if m[0] != '_' and m != 'config' and m != 'configure':
+                setattr(self, m, getattr(self.frame, m))
+    def __str__(self):
+        return str(self.frame)
+
+class App:
+
+    def __init__(self, master):
+
+        self.master = master
+
+        frame = Frame(master)
+        frame.pack()
+
+        self.text = ScrolledText(frame, bg='white', height=10, font="Courier")
+        self.text.pack(fill=BOTH, side=LEFT, expand=True)
+        self.text.insert(END, "lollerstaces")
+
+
+        self.button = Button(frame, text="QUIT", fg="red", command=frame.quit)
+        self.button.pack(side=RIGHT)
+
+        self.go = Button(frame, text="Go", command=self.go)
+        self.go.pack(side=LEFT)
+
+        self.shame = Button(frame, text="Shame", command=self.shame)
+        self.shame.pack(side=LEFT)
+
+    def shame(self, all_the_things=False):
+        shame(all_the_things)
+
+    def go(self, artist):
+        artist = tkSimpleDialog.askstring("SoundCloudPwn", prompt, "whouwant?", self.master)
+        dl_sc(artist)
+    
+
+
+
 
 
 def get_lucky_url(name, site=None):
@@ -144,9 +203,9 @@ def dl_sc(username):
         f.close()
     os.chdir("..")
     
+
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        shame(True)
-        #shame()
-    elif len(sys.argv) == 2:
-        dl_sc(sys.argv[1])
+    root = Tk()
+    app = App(root)
+    root.mainloop()
+
