@@ -201,7 +201,7 @@ def dl_sc(username):
         return []
     os.chdir(make_artist_dir(username))
     for i,c in enumerate(tracks):
-        d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!" % shorten(username, 15) if c['downloadable'] else "cause %s sux!" % shorten(username, 15)))
+        d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(username, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(username, 15)))
         full_url = c['stream_url'] + "?client_id=%s" % (someones_client_id)
         zz = urllib2.urlopen(full_url)
         file_size = int(zz.info().getheaders("Content-Length")[0])
