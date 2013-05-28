@@ -56,9 +56,6 @@ class App:
         self.shamez = Button(frame, text="Shame", command=self.shamez)
         self.shamez.pack(side=LEFT)
 
-    def say_high(self):
-        print "dwfsd"
-
     def shamez(self, all_the_things=False):
         shame(all_the_things)
 
@@ -99,13 +96,13 @@ def get_tracks(username):
     # the given username was not a valid account name
     if  zz.status_code == 404:
         # http, null, soundcloud, artist, ...
-        d("[E] could not find artist %s, asking google for best match" % shorten(whouwant, 20))
+        d("[E] could not find artist %s, asking google for best match\n" % shorten(whouwant, 20))
         whouwant = get_lucky_url(whouwant, "soundcloud.com").split("/")[3].decode("utf-8")
     d("[+] User: %s ->\n" % whouwant)
     yy = "http://api.soundcloud.com/resolve.json?url=http://soundcloud.com/%s/tracks&client_id=%s" % (urllib.quote(whouwant), someones_client_id)
     reqzz = requests.head(yy)
     if reqzz.status_code == 404:
-        d("[E] Could not find track listing for user %s" % shorten(whouwant, 20))
+        d("[E] Could not find track listing for user %s\n" % shorten(whouwant, 20))
         return []
     zz = urllib2.urlopen(yy).read()
     zz_uj = ujson.loads(zz)
@@ -128,13 +125,17 @@ def shame(all_the_things=False):
             hobj = lxml.html.document_fromstring(zz)
             id_username = hobj.xpath("//username")[0].text
             id_account_type = hobj.xpath("//plan")[0].text
-            d(str(failures) + "\n")
+            d("ID Failures" + str(failures) + "\n")
             failures = 0
             d(id_account_type + "\n")
+            if " " in id_username:
+                print id_username
+                id_username = id_username.replace(" ", "-").lower()
+
             tracks = get_tracks(id_username)
             for c in tracks:
                 if not c['downloadable']:
-                    d('\t'  + repr(c['title']) +  "    " + c['stream_url'] + "?client_id=%s" % (someones_client_id))
+                    d('\t'  + repr(c['title'])[2:-1] +  "    " + c['stream_url'] + "?client_id=%s" % (someones_client_id))
             if tracks:
                 ctr +=1
             if not all_the_things and ctr == SHAME_LIMIT:
