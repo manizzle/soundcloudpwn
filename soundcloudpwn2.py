@@ -27,19 +27,20 @@ def get_tracks(username):
     try:
         whouwant = whouwant.decode("utf-8")
     except  UnicodeEncodeError as e:
-        print >>sys.stderr, "Username of %s is foobar" % (repr(whouwant))
+        print >>sys.stderr, "[E] Username of %s is foobar" % (repr(whouwant))
         return []
     yy = "http://api.soundcloud.com/resolve.json?url=http://soundcloud.com/%s&client_id=%s" % (urllib.quote(whouwant), someones_client_id)
     zz = requests.head(yy)
     # the given username was not a valid account name
     if  zz.status_code == 404:
         # http, null, soundcloud, artist, ...
+        print >>sys.stderr, "[E] could not find artist %s, asking google for best match" % shorten(whouwant, 20)
         whouwant = get_lucky_url(whouwant, "soundcloud.com").split("/")[3].decode("utf-8")
     print >>sys.stderr, "[+] User: %s ->" % whouwant
     yy = "http://api.soundcloud.com/resolve.json?url=http://soundcloud.com/%s/tracks&client_id=%s" % (urllib.quote(whouwant), someones_client_id)
     reqzz = requests.head(yy)
     if reqzz.status_code == 404:
-        print >>sys.stderr, "Could not find track listing for user %s" % whouwant
+        print >>sys.stderr, "[E] Could not find track listing for user %s" % shorten(whouwant, 20)
         return []
     zz = urllib2.urlopen(yy).read()
     zz_uj = ujson.loads(zz)
@@ -49,6 +50,7 @@ def get_tracks(username):
 def shame(all_the_things=False):
     serch = (x for x in xrange(0, 999999999))
     ctr = 0
+    failures = 0
     if all_the_things:
         i = serch.next()
     else:
@@ -61,6 +63,8 @@ def shame(all_the_things=False):
             obj = lxml.html.document_fromstring(zz)
             id_username = obj.xpath("//username")[0].text
             id_account_type = obj.xpath("//plan")[0].text
+            print >>sys.stderr, failures
+            failures = 0
             print >>sys.stderr, id_account_type
             tracks = get_tracks(id_username)
             for c in tracks:
@@ -70,6 +74,8 @@ def shame(all_the_things=False):
                 ctr +=1
             if not all_the_things and ctr == SHAME_LIMIT:
                 break
+        else:
+            failures += 1
         if all_the_things:
             try:
                 i = serch.next()
@@ -110,6 +116,9 @@ def shorten(string, length):
 def dl_sc(username):
     tracks = get_tracks(username)
     numtracks = len(tracks)
+    if(numtracks == 0):        
+        print >>sys.stderr, "[+] No tracks found"
+        return []
     os.chdir(make_artist_dir(username))
     for i,c in enumerate(tracks):
         print >>sys.stderr, "[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!" % shorten(username, 15) if c['downloadable'] else "cause %s sux!" % shorten(username, 15))
@@ -119,7 +128,7 @@ def dl_sc(username):
         f = open(c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
         file_size_dl = 0
         dl_block_sz = file_size / progress_bar_size
-        print "[+] %s " % convertSize(file_size).ljust(9, ' '),
+        print >>sys.stderr, "[+] %s " % convertSize(file_size).ljust(9, ' '),
         while True:
             buffer = zz.read(dl_block_sz);
             if not buffer:
@@ -130,7 +139,7 @@ def dl_sc(username):
             sys.stdout.write('.')
             sys.stdout.flush()
             
-        print
+        print >>sys.stderr
         #f.write(zz.read())
         f.close()
     os.chdir("..")
