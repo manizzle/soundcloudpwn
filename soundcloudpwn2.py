@@ -74,14 +74,18 @@ class App:
         t.daemon = True
         t.start()
 
-def d(st):
+def d(st, id=None):
     global obj
     if obj:
         t, m = obj
-        t.insert(END, st)
+        if id:
+            t.insert(t.index(id), st)
+        else:
+            t.insert(END, st)
         m.update_idletasks()
     else:
         print >>sys.stderr, st
+    print obj[0].index(END)
     return st
 
 def get_lucky_url(name, site=None):
@@ -127,7 +131,7 @@ def get_tracks(username):
         return []
     zz = urllib2.urlopen(yy).read()
     zz_uj = ujson.loads(zz)
-    return zz_uj
+    return zz_uj, whouwant
 
 
 def shame(all_the_things=False):
@@ -200,7 +204,8 @@ def shorten(string, length):
     return result
 
 def dl_sc(username):
-    tracks = get_tracks(username)
+    """rip all tracks from a best-guess artist/username to a folder"""
+    tracks, username = get_tracks(username)
     numtracks = len(tracks)
     if(numtracks == 0):        
         d("[+] No tracks found\n")
@@ -213,12 +218,18 @@ def dl_sc(username):
         file_size = int(zz.info().getheaders("Content-Length")[0])
         f = open(c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
         dl_block_sz = file_size / progress_bar_size
-        d("[+] %s\n " % convertSize(file_size).ljust(9, ' '))
-        read_write(zz, f, dl_block_sz)
-        d("\n")
+        d("[+] %s " % convertSize(file_size).ljust(9, ' '))
+        read_write(zz, f, dl_block_sz, username + str(i))
+        #d("\n")
     os.chdir("..")
 
-def read_write(url_obj, file_obj, dl_block_sz):
+def read_write(url_obj, file_obj, dl_block_sz, id):
+    global obj
+    # save line we will be writing to (the one above current) -1l = -1 line
+    my_line = obj[0].index("%s-1line" % END)
+    d('\n')
+    # go to end of current line (this guy really likes format strings)
+    obj[0].mark_set(id, "%slineend" % my_line)
     file_size_dl = 0
     while True:
         buffer = url_obj.read(dl_block_sz);
@@ -227,7 +238,7 @@ def read_write(url_obj, file_obj, dl_block_sz):
         file_size_dl += len(buffer)
         file_obj.write(buffer)
         # Progress bar: because newlines/spaces are dumb
-        d('.')
+        d('.', id)
     file_obj.close()
     
 if __name__ == "__main__":
