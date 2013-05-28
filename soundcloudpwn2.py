@@ -5,7 +5,7 @@
 
 import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math
 from Tkinter import *
-import tkSimpleDialog
+import tkSimpleDialog, threading
 someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
 #someones_client_id = "7dd86f1df1b1f7f08683ffc8b5a39b23"
 SHAME_LIMIT = 10
@@ -58,11 +58,17 @@ class App:
 
     def shamez(self, all_the_things=False):
         shame(all_the_things)
+        t = threading.Thread(target=shame, args = (all_the_things,))
+        t.daemon = True
+        t.start()
 
     def go(self, master):
         artist = tkSimpleDialog.askstring("SoundCloudPwn", "Artist:", initialvalue="whouwant?", parent=master)
         if not artist:
             return
+        t = threading.Thread(target=dl_sc, args = (artist,))
+        t.daemon = True
+        t.start()
         dl_sc(artist)
 
 def d(st):
@@ -199,23 +205,24 @@ def dl_sc(username):
         zz = urllib2.urlopen(full_url)
         file_size = int(zz.info().getheaders("Content-Length")[0])
         f = open(c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
-        file_size_dl = 0
         dl_block_sz = file_size / progress_bar_size
         d("[+] %s\n " % convertSize(file_size).ljust(9, ' '))
-        while True:
-            buffer = zz.read(dl_block_sz);
-            if not buffer:
-                break;
-            file_size_dl += len(buffer)
-            f.write(buffer)
-            # because newlines/spaces are dumb
-            d('.')
-            
+        read_write(zz, f, dl_block_sz)
         d("\n")
-        #f.write(zz.read())
-        f.close()
     os.chdir("..")
 
+def read_write(url_obj, file_obj, dl_block_sz):
+    file_size_dl = 0
+    while True:
+        buffer = url_obj.read(dl_block_sz);
+        if not buffer:
+            break;
+        file_size_dl += len(buffer)
+        file_obj.write(buffer)
+        # Progress bar: because newlines/spaces are dumb
+        d('.')
+    file_obj.close()
+    
 if __name__ == "__main__":
     root = Tk()
     app = App(root)
