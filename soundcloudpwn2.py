@@ -1,9 +1,14 @@
 # SoundCloudPwn 0.2  (2013)
 # manizzle && g0tmk
+#
 # http://help.soundcloud.com/customer/portal/articles/243684-can-people-download-my-sounds-
 # Lies, Lies, and more Lies ;p
+#
+# Documentation @
+#   http://developers.soundcloud.com/docs/api/reference
+    
 
-import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math, datetime
+import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math, datetime, webbrowser
 from Tkinter import *
 from multiprocessing import Process
 from Queue import Queue
@@ -14,6 +19,7 @@ someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
 #someones_client_id = "7dd86f1df1b1f7f08683ffc8b5a39b23"
 shame_file = "shame.txt"
 SHAME_LIMIT = 10
+href_link = "http://developers.soundcloud.com/docs/api/reference"
 progress_bar_size = 1
 time_to_stop = False
 obj = None
@@ -51,9 +57,18 @@ class App:
         self.text = ScrolledText(frame, bg='white', height=10, font="Courier")
         self.text.pack(fill=BOTH, side=LEFT, expand=True)
 
+        self.text.tag_config("hyper", foreground="blue", underline=1)
+        self.text.tag_bind("hyper", "<Enter>", self._enter)
+        self.text.tag_bind("hyper", "<Leave>", self._exit)
+        self.text.tag_bind("hyper", "<Button-1>", self._link)
+        self.text.config(cursor="arrow")
+
         obj = (self.text, self.master)
 
         self.button = Button(frame, text="QUIT", fg="red", command=frame.quit)
+        self.button.pack(side=RIGHT)
+
+        self.button = Button(frame, text="About", fg="red", command=self.about)
         self.button.pack(side=RIGHT)
 
         self.goz = Button(frame, text="Go", command=lambda : self.go(self.master))
@@ -65,12 +80,18 @@ class App:
         self.shame2 = Button(frame, text="Shame Allthethings", command= lambda : self.shamez(True))
         self.shame2.pack(side=LEFT)
 
+        #self.cancel = Button(frame, text="Stop", command=self.stop)
+        #self.cancel.pack(side=LEFT)
+
         self.cancel = Button(frame, text="Cancel", command=self.stop)
         self.cancel.pack(side=LEFT)
 
+
     def shamez(self, all_the_things):
         global id_ctr
-        id_ctr += 1
+        id_ctr += 1        
+        threads = tkSimpleDialog.askstring("SoundCloudPwn", "Threads:", initialvalue="10", parent=master)
+
         t = threading.Thread(target=shame, name=str(id_ctr), args = (all_the_things,))
         t.daemon = True
         t.start()        
@@ -87,6 +108,7 @@ class App:
 
     def stop(self):
         global id_ctr, time_to_stop
+        # FIXME: still hangs occasionally when running many shame_somethings threads
         d("[*] Killing %s threads\n" % (threading.active_count() - 1))
         time_to_stop = True
         for e in threading.enumerate():
@@ -98,6 +120,18 @@ class App:
         id_ctr = 0
         time_to_stop = False
         d("[*] Done killing threads\n")
+
+    def about(self):
+        d("[~] Brought to you by soundcloud's ")
+        sys.stderr.write("API\n")
+        self.text.insert(END, "API\n", ("hyper"))
+        
+    def _exit(self, event):
+        self.text.config(cursor="")
+    def _enter(self, event):
+        self.text.config(cursor="hand2")
+    def _link(self, event):
+        webbrowser.open_new_tab(href_link)
 
 
 def d(st, id=None):
@@ -113,7 +147,7 @@ def d(st, id=None):
         t.see(END)
         m.update_idletasks()
     else:
-        print >>sys.stderr, st
+        sys.stderr.write(st)
     sys.stderr.write(st)
     return st
 
@@ -168,7 +202,7 @@ def get_tracks(username):
     zz_uj = ujson.loads(zz)
     return zz_uj, whouwant
 
-def shame(all_the_things=False):
+def shame(all_the_things=False, range=None):
     global time_to_stop
     f = open(shame_file, "w")
     f.write(d("[+] Writing to %s:\n" % shame_file))
@@ -261,14 +295,14 @@ def dl_sc(username):
     if(numtracks == 0):        
         d("[+] No tracks found\n")
         return []
-    os.chdir(make_artist_dir(username))
+    user_folder = (make_artist_dir(username))
     for i,c in enumerate(tracks):
         full_url = c['stream_url'] + "?client_id=%s" % (someones_client_id)
         if time_to_stop:
             break
         zz = urllib2.urlopen(full_url)
         file_size = int(zz.info().getheaders("Content-Length")[0])
-        f = open(c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
+        f = open(user_folder + "/" + c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
         dl_block_sz = file_size / progress_bar_size
         #d("[+] %s " % convertSize(file_size).ljust(9, ' '))        
         d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(convertSize(file_size) + " " + c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(username, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(username, 15)))
@@ -277,7 +311,6 @@ def dl_sc(username):
         if time_to_stop:
             break
         #d("\n")
-    os.chdir("..")
     d("[*] Thread %s exiting, done with %s\n" % (threading.current_thread().name, username))
 
 def read_write(url_obj, file_obj, dl_block_sz, id):
