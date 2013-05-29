@@ -62,7 +62,7 @@ class App:
         self.shame2 = Button(frame, text="Shame Allthethings", command= lambda : self.shamez(True))
         self.shame2.pack(side=LEFT)
 
-        self.cancel = Button(frame, text="Cancel", command=self.stop)
+        self.cancel = Button(frame, text="Cancel (donothing)", command=self.stop)
         self.cancel.pack(side=LEFT)
 
     def shamez(self, all_the_things):
@@ -148,7 +148,7 @@ def get_tracks(username):
 def shame(all_the_things=False):
     global time_to_stop
     f = open(shame_file, "w")
-    f.write(d("[+] Writing to %s:  " % shame_file + str(failures) + "\n"))
+    f.write(d("[+] Writing to %s:\n" % shame_file)
 
 
     serch = (x for x in xrange(0, 999999999))
