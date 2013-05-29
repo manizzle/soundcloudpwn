@@ -83,17 +83,13 @@ class App:
 
 
 def d(st, id=None):    
-    print >>sys.stderr, "%s, %s d printing stuff..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
     global obj
     if obj:
         t, m = obj
         if id:
-            print >>sys.stderr, "%s, %s d has id..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
             t.insert(t.index(id), st)
         else:
-            print >>sys.stderr, "%s, %s d no id..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
             t.insert(END, st)
-        print >>sys.stderr, "%s, %s d updating idletasks..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
         m.update_idletasks()
     else:
         print >>sys.stderr, st
@@ -256,23 +252,18 @@ def read_write(url_obj, file_obj, dl_block_sz, id):
     #obj[0].mark_set(id, "%slineend" % my_line)
     file_size_dl = 0
     while True:
-        print >>sys.stderr, "%s, %s reading buffer..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
         buffer = url_obj.read(dl_block_sz);
         if not buffer:
             break;
         file_size_dl += len(buffer)
-        print >>sys.stderr, "%s, %s writing buffer..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
         file_obj.write(buffer)
         # Progress bar: as simple as it gets
-        print >>sys.stderr, "%s, %s making a dot..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
 
         #d('.', id)
         if time_to_stop:
             break;
-    print >>sys.stderr, "%s, %s unsetting mark" % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
     # remove mark when we are done with it
     #obj[0].mark_unset(id)
-    print >>sys.stderr, "%s, %s closing file..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
 
     file_obj.close()
     
