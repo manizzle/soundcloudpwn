@@ -110,6 +110,7 @@ def d(st, id=None):
             t.insert(t.index(id), st)
         else:
             t.insert(END, st)
+        t.see(END)
         m.update_idletasks()
     else:
         print >>sys.stderr, st
