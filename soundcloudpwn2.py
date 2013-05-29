@@ -3,16 +3,17 @@
 # http://help.soundcloud.com/customer/portal/articles/243684-can-people-download-my-sounds-
 # Lies, Lies, and more Lies ;p
 
-import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math
+import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math, datetime
 from Tkinter import *
 from multiprocessing import Process
 
 import tkSimpleDialog, threading
 someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
 #someones_client_id = "7dd86f1df1b1f7f08683ffc8b5a39b23"
+shame_file = "shame.txt"
 SHAME_LIMIT = 10
-progress_bar_size = 64
-
+progress_bar_size = 1
+time_to_stop = False
 obj = None
 
 class ScrolledText(Text):
@@ -61,6 +62,9 @@ class App:
         self.shame2 = Button(frame, text="Shame Allthethings", command= lambda : self.shamez(True))
         self.shame2.pack(side=LEFT)
 
+        self.cancel = Button(frame, text="Cancel", command=self.stop)
+        self.cancel.pack(side=LEFT)
+
     def shamez(self, all_the_things):
         t = threading.Thread(target=shame, args = (all_the_things,))
         t.daemon = True
@@ -74,18 +78,25 @@ class App:
         t.daemon = True
         t.start()
 
-def d(st, id=None):
+    def stop(self):
+        time_to_stop = True
+
+
+def d(st, id=None):    
+    print >>sys.stderr, "%s, %s d printing stuff..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
     global obj
     if obj:
         t, m = obj
         if id:
+            print >>sys.stderr, "%s, %s d has id..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
             t.insert(t.index(id), st)
         else:
+            print >>sys.stderr, "%s, %s d no id..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
             t.insert(END, st)
+        print >>sys.stderr, "%s, %s d updating idletasks..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
         m.update_idletasks()
     else:
         print >>sys.stderr, st
-    print obj[0].index(END)
     return st
 
 def get_lucky_url(name, site=None):
@@ -135,7 +146,11 @@ def get_tracks(username):
 
 
 def shame(all_the_things=False):
-    f = open("shame.txt", "w")
+    global time_to_stop
+    f = open(shame_file, "w")
+    f.write(d("[+] Writing to %s:  " % shame_file + str(failures) + "\n"))
+
+
     serch = (x for x in xrange(0, 999999999))
     ctr = 0
     failures = 0
@@ -163,6 +178,8 @@ def shame(all_the_things=False):
                 ctr +=1
             if not all_the_things and ctr == SHAME_LIMIT:
                 break
+            if time_to_stop:
+                break;
         else:
             failures += 1
         if all_the_things:
@@ -205,6 +222,7 @@ def shorten(string, length):
 
 def dl_sc(username):
     """rip all tracks from a best-guess artist/username to a folder"""
+    global time_to_stop
     tracks, username = get_tracks(username)
     numtracks = len(tracks)
     if(numtracks == 0):        
@@ -212,33 +230,49 @@ def dl_sc(username):
         return []
     os.chdir(make_artist_dir(username))
     for i,c in enumerate(tracks):
-        d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(username, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(username, 15)))
         full_url = c['stream_url'] + "?client_id=%s" % (someones_client_id)
+        if time_to_stop:
+            break;
         zz = urllib2.urlopen(full_url)
         file_size = int(zz.info().getheaders("Content-Length")[0])
         f = open(c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
         dl_block_sz = file_size / progress_bar_size
-        d("[+] %s " % convertSize(file_size).ljust(9, ' '))
+        #d("[+] %s " % convertSize(file_size).ljust(9, ' '))        
+        d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(convertSize(file_size) + " " + c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(username, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(username, 15)))
+
         read_write(zz, f, dl_block_sz, username + str(i))
+        if time_to_stop:
+            break;
         #d("\n")
     os.chdir("..")
 
 def read_write(url_obj, file_obj, dl_block_sz, id):
-    global obj
-    # save line we will be writing to (the one above current) -1l = -1 line
-    my_line = obj[0].index("%s-1line" % END)
-    d('\n')
+    global obj, time_to_stop
+    # save line we will be writing to (the one above current)
+    #my_line = obj[0].index("%s-1line" % END)
+    #d('\n')
     # go to end of current line (this guy really likes format strings)
-    obj[0].mark_set(id, "%slineend" % my_line)
+    #obj[0].mark_set(id, "%slineend" % my_line)
     file_size_dl = 0
     while True:
+        print >>sys.stderr, "%s, %s reading buffer..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
         buffer = url_obj.read(dl_block_sz);
         if not buffer:
             break;
         file_size_dl += len(buffer)
+        print >>sys.stderr, "%s, %s writing buffer..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
         file_obj.write(buffer)
-        # Progress bar: because newlines/spaces are dumb
-        d('.', id)
+        # Progress bar: as simple as it gets
+        print >>sys.stderr, "%s, %s making a dot..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
+
+        #d('.', id)
+        if time_to_stop:
+            break;
+    print >>sys.stderr, "%s, %s unsetting mark" % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
+    # remove mark when we are done with it
+    #obj[0].mark_unset(id)
+    print >>sys.stderr, "%s, %s closing file..." % (datetime.datetime.now().second, datetime.datetime.now().microsecond)
+
     file_obj.close()
     
 if __name__ == "__main__":
