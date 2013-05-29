@@ -167,18 +167,20 @@ def shame(all_the_things=False):
             id_account_type = hobj.xpath("//plan")[0].text
             f.write(d("[+] ID Failures:  " + str(failures) + "\n"))
             failures = 0
-            f.write(d(id_account_type + "\n"))
-            tracks = get_tracks(id_username)
+            f.write(d("[+] %s\n" % id_account_type))
+            tracks, id_username = get_tracks(id_username)
             f.write("[+] User: %s ->\n" % id_username)
             for c in tracks:
                 if not c['downloadable']:
                     f.write(d('\t'  + repr(c['title'])[2:-1] +  "    " + c['stream_url'] + "?client_id=%s\n" % (someones_client_id)))
+                if time_to_stop:
+                    break
             if tracks:
                 ctr +=1
             if not all_the_things and ctr == SHAME_LIMIT:
                 break
             if time_to_stop:
-                break;
+                break
         else:
             failures += 1
         if all_the_things:
@@ -231,7 +233,7 @@ def dl_sc(username):
     for i,c in enumerate(tracks):
         full_url = c['stream_url'] + "?client_id=%s" % (someones_client_id)
         if time_to_stop:
-            break;
+            break
         zz = urllib2.urlopen(full_url)
         file_size = int(zz.info().getheaders("Content-Length")[0])
         f = open(c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
@@ -241,7 +243,7 @@ def dl_sc(username):
 
         read_write(zz, f, dl_block_sz, username + str(i))
         if time_to_stop:
-            break;
+            break
         #d("\n")
     os.chdir("..")
 
