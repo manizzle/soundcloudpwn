@@ -148,8 +148,7 @@ def get_tracks(username):
 def shame(all_the_things=False):
     global time_to_stop
     f = open(shame_file, "w")
-    f.write(d("[+] Writing to %s:\n" % shame_file)
-
+    f.write(d("[+] Writing to %s:\n" % shame_file))
 
     serch = (x for x in xrange(0, 999999999))
     ctr = 0
