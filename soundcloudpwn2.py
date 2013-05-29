@@ -6,6 +6,8 @@
 import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math, datetime
 from Tkinter import *
 from multiprocessing import Process
+from Queue import Queue
+
 
 import tkSimpleDialog, threading
 someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
@@ -15,6 +17,7 @@ SHAME_LIMIT = 10
 progress_bar_size = 1
 time_to_stop = False
 obj = None
+id_ctr = 0
 
 class ScrolledText(Text):
     def __init__(self, frame, **kw):
@@ -62,27 +65,44 @@ class App:
         self.shame2 = Button(frame, text="Shame Allthethings", command= lambda : self.shamez(True))
         self.shame2.pack(side=LEFT)
 
-        self.cancel = Button(frame, text="Cancel (donothing)", command=self.stop)
+        self.cancel = Button(frame, text="Cancel", command=self.stop)
         self.cancel.pack(side=LEFT)
 
     def shamez(self, all_the_things):
-        t = threading.Thread(target=shame, args = (all_the_things,))
+        global id_ctr
+        id_ctr += 1
+        t = threading.Thread(target=shame, name=str(id_ctr), args = (all_the_things,))
         t.daemon = True
-        t.start()
+        t.start()        
 
     def go(self, master):
+        global id_ctr
+        id_ctr += 1
         artist = tkSimpleDialog.askstring("SoundCloudPwn", "Artist:", initialvalue="whouwant?", parent=master)
         if not artist:
             return
-        t = threading.Thread(target=dl_sc, args = (artist,))
+        t = threading.Thread(target=dl_sc, name=str(id_ctr), args = (artist,))
         t.daemon = True
         t.start()
 
     def stop(self):
+        global id_ctr, time_to_stop
+        d("[*] Killing %s threads\n" % (threading.active_count() - 1))
         time_to_stop = True
+        for e in threading.enumerate():
+            if not e == threading.current_thread():
+                e.join()
+                time_to_stop = False
+                d("[*] Thread %s exiting\n" % e.name)
+                time_to_stop = True
+        id_ctr = 0
+        time_to_stop = False
+        d("[*] Done killing threads\n")
 
 
-def d(st, id=None):    
+def d(st, id=None):
+    if time_to_stop:
+        return st
     global obj
     if obj:
         t, m = obj
@@ -93,13 +113,14 @@ def d(st, id=None):
         m.update_idletasks()
     else:
         print >>sys.stderr, st
+    sys.stderr.write(st)
     return st
 
 def get_lucky_url(name, site=None):
     base  = 'http://ajax.googleapis.com/ajax/services/search/web?v=1.0&q='
     if not site:
         name = name.decode("utf-8")
-        xx =base + urllib.quote(" %s" % name)
+        xx = base + urllib.quote(" %s" % name)
     else:
         site = site.decode("utf-8")
         name = name.decode("utf-8")
@@ -107,20 +128,22 @@ def get_lucky_url(name, site=None):
     x = ujson.loads(urllib2.urlopen(xx).read())['responseData']['results']
     if not x:
         return None
-
     return x[1]['unescapedUrl']
     
 def get_tracks(username):
+    global time_to_stop
     if ' ' in username:
         username = username.replace(' ', '-').lower()
     whouwant = username
     try:
         whouwant = whouwant.decode("utf-8")
-    except  UnicodeEncodeError as e:
+    except UnicodeEncodeError as e:
         d("[E] Username of %s is foobar\n" % (repr(whouwant)))
         return []
     yy = "http://api.soundcloud.com/resolve.json?url=http://soundcloud.com/%s&client_id=%s" % (urllib.quote(whouwant), someones_client_id)
     zz = requests.head(yy)
+    if time_to_stop:
+        return None, None
     # the given username was not a valid account name
     if  zz.status_code == 404:
         # http, null, soundcloud, artist, ...
@@ -130,6 +153,8 @@ def get_tracks(username):
             d("[E] google doesn't even know who you want\n")
             return []
         whouwant = whouwant.split("/")[3].decode("utf-8")
+    if time_to_stop:
+        return None, None
     d("[+] User: %s ->\n" % whouwant)
     yy = "http://api.soundcloud.com/resolve.json?url=http://soundcloud.com/%s/tracks&client_id=%s" % (urllib.quote(whouwant), someones_client_id)
     reqzz = requests.head(yy)
@@ -137,9 +162,10 @@ def get_tracks(username):
         d("[E] Could not find track listing for user %s\n" % shorten(whouwant, 20))
         return []
     zz = urllib2.urlopen(yy).read()
+    if time_to_stop:
+        return None, None
     zz_uj = ujson.loads(zz)
     return zz_uj, whouwant
-
 
 def shame(all_the_things=False):
     global time_to_stop
@@ -156,26 +182,32 @@ def shame(all_the_things=False):
     while 1:
         yy = "http://api.soundcloud.com/users/%d?client_id=%s" % (i, someones_client_id)
         resp = requests.head(yy)
+        if time_to_stop:
+            break
         if not resp.status_code == 404:
             zz = urllib2.urlopen(yy).read()
             hobj = lxml.html.document_fromstring(zz)
+            if time_to_stop:
+                break
             id_username = hobj.xpath("//username")[0].text
             id_account_type = hobj.xpath("//plan")[0].text
             f.write(d("[+] ID Failures:  " + str(failures) + "\n"))
             failures = 0
             f.write(d("[+] %s\n" % id_account_type))
             tracks, id_username = get_tracks(id_username)
+            if time_to_stop:
+                break
             f.write("[+] User: %s ->\n" % id_username)
             for c in tracks:
                 if not c['downloadable']:
                     f.write(d('\t'  + repr(c['title'])[2:-1] +  "    " + c['stream_url'] + "?client_id=%s\n" % (someones_client_id)))
                 if time_to_stop:
                     break
+            if time_to_stop:
+                break
             if tracks:
                 ctr +=1
             if not all_the_things and ctr == SHAME_LIMIT:
-                break
-            if time_to_stop:
                 break
         else:
             failures += 1
@@ -186,7 +218,9 @@ def shame(all_the_things=False):
                 break
         else:
             i = random.randrange(999999999)
-    f.close()
+    if f:
+        f.close()
+    d("[*] Thread %s exiting, done shaming\n" % threading.current_thread().name)
 
 def make_artist_dir(target):
     cleaned = clean(target)
@@ -220,6 +254,7 @@ def shorten(string, length):
 def dl_sc(username):
     """rip all tracks from a best-guess artist/username to a folder"""
     global time_to_stop
+    print threading.current_thread().name
     tracks, username = get_tracks(username)
     numtracks = len(tracks)
     if(numtracks == 0):        
@@ -242,14 +277,10 @@ def dl_sc(username):
             break
         #d("\n")
     os.chdir("..")
+    d("[*] Thread %s exiting, done with %s\n" % (threading.current_thread().name, username))
 
 def read_write(url_obj, file_obj, dl_block_sz, id):
     global obj, time_to_stop
-    # save line we will be writing to (the one above current)
-    #my_line = obj[0].index("%s-1line" % END)
-    #d('\n')
-    # go to end of current line (this guy really likes format strings)
-    #obj[0].mark_set(id, "%slineend" % my_line)
     file_size_dl = 0
     while True:
         buffer = url_obj.read(dl_block_sz);
@@ -257,13 +288,8 @@ def read_write(url_obj, file_obj, dl_block_sz, id):
             break;
         file_size_dl += len(buffer)
         file_obj.write(buffer)
-        # Progress bar: as simple as it gets
-
-        #d('.', id)
         if time_to_stop:
             break;
-    # remove mark when we are done with it
-    #obj[0].mark_unset(id)
 
     file_obj.close()
     
