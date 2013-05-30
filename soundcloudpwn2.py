@@ -136,7 +136,7 @@ class App:
         time_to_stop = False
 
     def about(self):
-        d("[~] Brought to you by soundcloud's ")
+        d("[~] Brought to you by soundcloud's open-as-fuck ")
         if(write_to_stderr):
             sys.stderr.write("API\n")
         self.text.insert(END, "API", ("hyper"))
@@ -272,6 +272,8 @@ def shame(all_the_things=False, range=None):
     if f:
         f.close()
     d("[*] Thread %s exiting, done shaming\n" % threading.current_thread().name)
+    all_done_check()
+
 
 def make_artist_dir(target):
     cleaned = clean(target)
@@ -309,6 +311,7 @@ def dl_sc(username, start_index):
     numtracks = len(tracks)
     if(numtracks == 0):        
         d("[+] Thread %s exiting, No tracks found\n" % threading.current_thread().name)
+        all_done_check()
         return []
     user_folder = (make_artist_dir(username))
     for i,c in enumerate(tracks):
@@ -327,7 +330,8 @@ def dl_sc(username, start_index):
         read_write(zz, f, dl_block_sz, username + str(i))
         if time_to_stop:
             break
-    d("[*] Thread %s exiting, done with %s\n" % (threading.current_thread().name, username))
+    d("[+] Thread %s exiting, done with %s\n" % (threading.current_thread().name, username))
+    all_done_check()
 
 def read_write(url_obj, file_obj, dl_block_sz, id):
     global obj, time_to_stop
@@ -341,6 +345,12 @@ def read_write(url_obj, file_obj, dl_block_sz, id):
         if time_to_stop:
             break;
     file_obj.close()
+
+def all_done_check():
+    # means there is only main thread + one other thread (the one calling this)
+    if threading.active_count() == 2:
+        d("[+] No more work.%s\n" % ())
+
     
 if __name__ == "__main__":
     root = Tk()
