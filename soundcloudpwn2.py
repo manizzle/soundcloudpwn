@@ -13,8 +13,8 @@ import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math, threa
 import webbrowser 
 
 # scpwn info
-VERSION = 0.2
-APPNAME = SoundCloudPwn
+VERSION = "0.2"
+APPNAME = "SoundCloudPwn"
 # sc api cid
 someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
 # backup cid
@@ -103,11 +103,9 @@ class App:
         
         self.about()
 
-
     def shamez(self, all_the_things):
         global thread_id_ctr
         thread_id_ctr += 1        
-        threads = tkSimpleDialog.askstring(APPNAME, "Threads:", initialvalue="10", parent=master)
         t = threading.Thread(target=shame, name=str(thread_id_ctr), args = (all_the_things,))
         t.daemon = True
         t.start()        
@@ -141,10 +139,10 @@ class App:
                 d("[*] Thread %s exiting\n" % e.name)
                 time_to_stop = True
 
+        time_to_stop = False
         if not thread_id_ctr == 0:
             d("[*] Done killing threads\n")
             thread_id_ctr = 0
-        time_to_stop = False
 
     def about(self):
         d("[~] %s %s\n" % (APPNAME, VERSION))        
@@ -348,17 +346,17 @@ def read_write(url_obj, file_obj, dl_block_sz, id):
     global obj, time_to_stop
     file_size_dl = 0
     while True:
-        buffer = url_obj.read(dl_block_sz);
+        buffer = url_obj.read(dl_block_sz)
         if not buffer:
-            break;
+            break
         file_size_dl += len(buffer)
         file_obj.write(buffer)
         if time_to_stop:
-            break;
+            break
     file_obj.close()
 
 def all_done_check():
-    # means there is only main thread + one other thread (the one calling this)
+    # means the caller is the last auxillary thread left (2 = main + caller)
     if threading.active_count() == 2:
         d("[+] No more work.\n")
 
