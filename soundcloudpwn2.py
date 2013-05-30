@@ -349,10 +349,11 @@ def read_write(url_obj, file_obj, dl_block_sz, id):
 def all_done_check():
     # means there is only main thread + one other thread (the one calling this)
     if threading.active_count() == 2:
-        d("[+] No more work.%s\n" % ())
+        d("[+] No more work.\n")
 
     
 if __name__ == "__main__":
     root = Tk()
+    root.wm_title("SoundCloudPwn v2");
     app = App(root)
     root.mainloop()
