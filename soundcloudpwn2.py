@@ -18,12 +18,19 @@ import tkSimpleDialog, threading
 someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
 #someones_client_id = "7dd86f1df1b1f7f08683ffc8b5a39b23"
 shame_file = "shame.txt"
-SHAME_LIMIT = 10
 href_link = "http://developers.soundcloud.com/docs/api/reference"
+debug_msg = ":debug"
 progress_bar_size = 1
+# min number of artists (w/ priv tracks) found before shame somethings exits
+SHAME_LIMIT = 10
 time_to_stop = False
+debug_mode = False
+write_to_stderr = False
 obj = None
 id_ctr = 0
+
+
+
 
 class ScrolledText(Text):
     def __init__(self, frame, **kw):
@@ -86,29 +93,33 @@ class App:
         self.cancel = Button(frame, text="Cancel", command=self.stop)
         self.cancel.pack(side=LEFT)
 
-
     def shamez(self, all_the_things):
         global id_ctr
         id_ctr += 1        
         threads = tkSimpleDialog.askstring("SoundCloudPwn", "Threads:", initialvalue="10", parent=master)
-
         t = threading.Thread(target=shame, name=str(id_ctr), args = (all_the_things,))
         t.daemon = True
         t.start()        
 
     def go(self, master):
         global id_ctr
+        start_index = 0
+        # enable debug mode when the debug_msg is the first string in the text box
+        debug_mode = True if self.text.get("0.0","0.0+%sc" % len(debug_msg)).find(debug_msg) == 0 else False
+        if debug_mode:
+            start_index = tkSimpleDialog.askstring("SoundCloudPwn", "Start index:", initialvalue="0", parent=master)
+
         id_ctr += 1
         artist = tkSimpleDialog.askstring("SoundCloudPwn", "Artist:", initialvalue="whouwant?", parent=master)
         if not artist:
             return
-        t = threading.Thread(target=dl_sc, name=str(id_ctr), args = (artist,))
+        t = threading.Thread(target=dl_sc, name=str(id_ctr), args = (artist,start_index-1))
         t.daemon = True
         t.start()
 
     def stop(self):
         global id_ctr, time_to_stop
-        # FIXME: still hangs occasionally when running many shame_somethings threads
+        # FIXME: still hangs occasionally when running many shame_somethings threads whoknows why
         d("[*] Killing %s threads\n" % (threading.active_count() - 1))
         time_to_stop = True
         for e in threading.enumerate():
@@ -117,14 +128,18 @@ class App:
                 time_to_stop = False
                 d("[*] Thread %s exiting\n" % e.name)
                 time_to_stop = True
-        id_ctr = 0
+
+        if not id_ctr == 0:
+            d("[*] Done killing threads\n")
+            id_ctr = 0
         time_to_stop = False
-        d("[*] Done killing threads\n")
 
     def about(self):
         d("[~] Brought to you by soundcloud's ")
-        sys.stderr.write("API\n")
-        self.text.insert(END, "API\n", ("hyper"))
+        if(write_to_stderr):
+            sys.stderr.write("API\n")
+        self.text.insert(END, "API", ("hyper"))
+        self.text.insert(END, "\n")
         
     def _exit(self, event):
         self.text.config(cursor="")
@@ -133,22 +148,22 @@ class App:
     def _link(self, event):
         webbrowser.open_new_tab(href_link)
 
-
 def d(st, id=None):
     if time_to_stop:
         return st
-    global obj
+    global obj, write_to_stderr
     if obj:
         t, m = obj
+        # if we are passed a screen position to write to
         if id:
             t.insert(t.index(id), st)
         else:
             t.insert(END, st)
         t.see(END)
-        m.update_idletasks()
-    else:
+        # keep the log screen updated
+        #m.update_idletasks()
+    if write_to_stderr:
         sys.stderr.write(st)
-    sys.stderr.write(st)
     return st
 
 def get_lucky_url(name, site=None):
@@ -286,17 +301,19 @@ def shorten(string, length):
         return result[:length-3].ljust(length, '.')
     return result
 
-def dl_sc(username):
+def dl_sc(username, start_index):
     """rip all tracks from a best-guess artist/username to a folder"""
     global time_to_stop
-    print threading.current_thread().name
     tracks, username = get_tracks(username)
     numtracks = len(tracks)
     if(numtracks == 0):        
-        d("[+] No tracks found\n")
+        d("[+] Thread %s exiting, No tracks found\n" % threading.current_thread().name)
         return []
     user_folder = (make_artist_dir(username))
     for i,c in enumerate(tracks):
+        if int(i) < int(start_index):
+            print i, " is less than ", start_index
+            continue
         full_url = c['stream_url'] + "?client_id=%s" % (someones_client_id)
         if time_to_stop:
             break
@@ -324,11 +341,9 @@ def read_write(url_obj, file_obj, dl_block_sz, id):
         file_obj.write(buffer)
         if time_to_stop:
             break;
-
     file_obj.close()
     
 if __name__ == "__main__":
     root = Tk()
     app = App(root)
     root.mainloop()
-
