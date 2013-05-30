@@ -27,7 +27,7 @@ time_to_stop = False
 debug_mode = False
 write_to_stderr = False
 obj = None
-id_ctr = 0
+thread_id_ctr = 0
 
 
 
@@ -94,31 +94,32 @@ class App:
         self.cancel.pack(side=LEFT)
 
     def shamez(self, all_the_things):
-        global id_ctr
-        id_ctr += 1        
+        global thread_id_ctr
+        thread_id_ctr += 1        
         threads = tkSimpleDialog.askstring("SoundCloudPwn", "Threads:", initialvalue="10", parent=master)
-        t = threading.Thread(target=shame, name=str(id_ctr), args = (all_the_things,))
+        t = threading.Thread(target=shame, name=str(thread_id_ctr), args = (all_the_things,))
         t.daemon = True
         t.start()        
 
     def go(self, master):
-        global id_ctr
+        global thread_id_ctr
         start_index = 0
         # enable debug mode when the debug_msg is the first string in the text box
         debug_mode = True if self.text.get("0.0","0.0+%sc" % len(debug_msg)).find(debug_msg) == 0 else False
         if debug_mode:
+            write_to_stderr == True
             start_index = tkSimpleDialog.askstring("SoundCloudPwn", "Start index:", initialvalue="0", parent=master)
 
-        id_ctr += 1
+        thread_id_ctr += 1
         artist = tkSimpleDialog.askstring("SoundCloudPwn", "Artist:", initialvalue="whouwant?", parent=master)
         if not artist:
             return
-        t = threading.Thread(target=dl_sc, name=str(id_ctr), args = (artist,start_index-1))
+        t = threading.Thread(target=dl_sc, name=str(thread_id_ctr), args = (artist,start_index-1))
         t.daemon = True
         t.start()
 
     def stop(self):
-        global id_ctr, time_to_stop
+        global thread_id_ctr, time_to_stop
         # FIXME: still hangs occasionally when running many shame_somethings threads whoknows why
         d("[*] Killing %s threads\n" % (threading.active_count() - 1))
         time_to_stop = True
@@ -129,9 +130,9 @@ class App:
                 d("[*] Thread %s exiting\n" % e.name)
                 time_to_stop = True
 
-        if not id_ctr == 0:
+        if not thread_id_ctr == 0:
             d("[*] Done killing threads\n")
-            id_ctr = 0
+            thread_id_ctr = 0
         time_to_stop = False
 
     def about(self):
@@ -321,13 +322,11 @@ def dl_sc(username, start_index):
         file_size = int(zz.info().getheaders("Content-Length")[0])
         f = open(user_folder + "/" + c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
         dl_block_sz = file_size / progress_bar_size
-        #d("[+] %s " % convertSize(file_size).ljust(9, ' '))        
         d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(convertSize(file_size) + " " + c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(username, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(username, 15)))
 
         read_write(zz, f, dl_block_sz, username + str(i))
         if time_to_stop:
             break
-        #d("\n")
     d("[*] Thread %s exiting, done with %s\n" % (threading.current_thread().name, username))
 
 def read_write(url_obj, file_obj, dl_block_sz, id):
