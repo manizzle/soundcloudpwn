@@ -6,30 +6,38 @@
 #
 # Documentation @
 #   http://developers.soundcloud.com/docs/api/reference
-    
 
-import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math, datetime, webbrowser
 from Tkinter import *
-from multiprocessing import Process
-from Queue import Queue
+import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math, threading, tkSimpleDialog
+# open API link using a web browser
+import webbrowser 
 
-
-import tkSimpleDialog, threading
+# scpwn info
+VERSION = 0.2
+APPNAME = SoundCloudPwn
+# sc api cid
 someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
+# backup cid
 #someones_client_id = "7dd86f1df1b1f7f08683ffc8b5a39b23"
-shame_file = "shame.txt"
-href_link = "http://developers.soundcloud.com/docs/api/reference"
-debug_msg = ":debug"
-progress_bar_size = 1
-# min number of artists (w/ priv tracks) found before shame somethings exits
-SHAME_LIMIT = 10
-time_to_stop = False
+# where to write shame output
+SHAME_FILE = "shame.txt"
+# where to link API to in about()
+API_REF_LINK = "http://developers.soundcloud.com/docs/api/reference"
+# show some extra messages / untested options
 debug_mode = False
+# debug string to look for in text box, typing it @ beginning (and clicking go) enables debug_mode while running
+DEBUG_MSG = ":debug"
+# whether or not to copy all messages to sterr
 write_to_stderr = False
+
+# min number of artists (w/ priv tracks) to print before shame somethings exits
+SHAME_LIMIT = 10
+# flag to threads that they should stop all work and exit
+time_to_stop = False
+# global reference to tkinter text object
 obj = None
+# counter, increments with number of active threads to give them all unique IDs
 thread_id_ctr = 0
-
-
 
 
 class ScrolledText(Text):
@@ -61,7 +69,7 @@ class App:
         self.master = master
         frame = Frame(master)
         frame.pack()
-        self.text = ScrolledText(frame, bg='white', height=10, font="Courier")
+        self.text = ScrolledText(frame, bg='white', height=20, font="Courier")
         self.text.pack(fill=BOTH, side=LEFT, expand=True)
 
         self.text.tag_config("hyper", foreground="blue", underline=1)
@@ -92,11 +100,14 @@ class App:
 
         self.cancel = Button(frame, text="Cancel", command=self.stop)
         self.cancel.pack(side=LEFT)
+        
+        self.about()
+
 
     def shamez(self, all_the_things):
         global thread_id_ctr
         thread_id_ctr += 1        
-        threads = tkSimpleDialog.askstring("SoundCloudPwn", "Threads:", initialvalue="10", parent=master)
+        threads = tkSimpleDialog.askstring(APPNAME, "Threads:", initialvalue="10", parent=master)
         t = threading.Thread(target=shame, name=str(thread_id_ctr), args = (all_the_things,))
         t.daemon = True
         t.start()        
@@ -104,17 +115,17 @@ class App:
     def go(self, master):
         global thread_id_ctr
         start_index = 0
-        # enable debug mode when the debug_msg is the first string in the text box
-        debug_mode = True if self.text.get("0.0","0.0+%sc" % len(debug_msg)).find(debug_msg) == 0 else False
+        # enable debug mode when the DEBUG_MSG is the first string in the text box
+        debug_mode = True if self.text.get("0.0","0.0+%sc" % len(DEBUG_MSG)).find(DEBUG_MSG) == 0 else False
         if debug_mode:
             write_to_stderr == True
-            start_index = tkSimpleDialog.askstring("SoundCloudPwn", "Start index:", initialvalue="0", parent=master)
+            start_index = tkSimpleDialog.askstring(APPNAME, "Start index:", initialvalue="0", parent=master)
 
         thread_id_ctr += 1
-        artist = tkSimpleDialog.askstring("SoundCloudPwn", "Artist:", initialvalue="whouwant?", parent=master)
+        artist = tkSimpleDialog.askstring(APPNAME, "Artist:", initialvalue="whouwant?", parent=master)
         if not artist:
             return
-        t = threading.Thread(target=dl_sc, name=str(thread_id_ctr), args = (artist,start_index-1))
+        t = threading.Thread(target=dl_sc, name=str(thread_id_ctr), args = (artist,start_index))
         t.daemon = True
         t.start()
 
@@ -136,7 +147,9 @@ class App:
         time_to_stop = False
 
     def about(self):
+        d("[~] %s %s\n" % (APPNAME, VERSION))        
         d("[~] Brought to you by soundcloud's open-as-fuck ")
+        # hackish.. prints the word API as a link, but nothing before and not the newline after it
         if(write_to_stderr):
             sys.stderr.write("API\n")
         self.text.insert(END, "API", ("hyper"))
@@ -147,7 +160,7 @@ class App:
     def _enter(self, event):
         self.text.config(cursor="hand2")
     def _link(self, event):
-        webbrowser.open_new_tab(href_link)
+        webbrowser.open_new_tab(API_REF_LINK)
 
 def d(st, id=None):
     if time_to_stop:
@@ -161,7 +174,7 @@ def d(st, id=None):
         else:
             t.insert(END, st)
         t.see(END)
-        # keep the log screen updated
+        # keep the log updated - seems unnecessary now that work is done in threads
         #m.update_idletasks()
     if write_to_stderr:
         sys.stderr.write(st)
@@ -220,8 +233,9 @@ def get_tracks(username):
 
 def shame(all_the_things=False, range=None):
     global time_to_stop
-    f = open(shame_file, "w")
-    f.write(d("[+] Writing to %s:\n" % shame_file))
+    # TODO: fix multiple shame threads outputing to same file
+    f = open(SHAME_FILE, "a")
+    f.write(d("[+] Appending to %s:\n" % SHAME_FILE))
 
     serch = (x for x in xrange(0, 999999999))
     ctr = 0
@@ -274,7 +288,6 @@ def shame(all_the_things=False, range=None):
     d("[*] Thread %s exiting, done shaming\n" % threading.current_thread().name)
     all_done_check()
 
-
 def make_artist_dir(target):
     cleaned = clean(target)
     if not os.path.isdir(cleaned):
@@ -304,7 +317,7 @@ def shorten(string, length):
         return result[:length-3].ljust(length, '.')
     return result
 
-def dl_sc(username, start_index):
+def dl_sc(username, start_index="0"):
     """rip all tracks from a best-guess artist/username to a folder"""
     global time_to_stop
     tracks, username = get_tracks(username)
@@ -315,8 +328,7 @@ def dl_sc(username, start_index):
         return []
     user_folder = (make_artist_dir(username))
     for i,c in enumerate(tracks):
-        if int(i) < int(start_index):
-            print i, " is less than ", start_index
+        if int(i) < (int(start_index) - 1):
             continue
         full_url = c['stream_url'] + "?client_id=%s" % (someones_client_id)
         if time_to_stop:
@@ -324,10 +336,9 @@ def dl_sc(username, start_index):
         zz = urllib2.urlopen(full_url)
         file_size = int(zz.info().getheaders("Content-Length")[0])
         f = open(user_folder + "/" + c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
-        dl_block_sz = file_size / progress_bar_size
         d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(convertSize(file_size) + " " + c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(username, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(username, 15)))
 
-        read_write(zz, f, dl_block_sz, username + str(i))
+        read_write(zz, f, file_size, username + str(i))
         if time_to_stop:
             break
     d("[+] Thread %s exiting, done with %s\n" % (threading.current_thread().name, username))
@@ -354,6 +365,8 @@ def all_done_check():
     
 if __name__ == "__main__":
     root = Tk()
-    root.wm_title("SoundCloudPwn v2");
+    root.wm_title("%s v%s" % (APPNAME, VERSION))
+    menubar = Menu(root)
+
     app = App(root)
     root.mainloop()
