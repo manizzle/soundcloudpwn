@@ -14,6 +14,7 @@ Run soundcloudpwn2.py from commandline to launch GUI
 ####Bugs
 - multiple shame threads walk all over eachothers log file output
 ####To do:
-- add ID3 tags based on api data
+- check ID3 tags functionality
+- handle a json config file
 
 soundcloudpwn.py was an old iteration of this script

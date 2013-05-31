@@ -356,27 +356,25 @@ def read_write(url_obj, file_obj, dl_block_sz, id, track_js):
     file_obj.write(buffer)
     try:
         id3info = ID3(file_obj)
-        #print id3info
-        if track_js['user']['username']:
-            id3info["ARTIST"] = track_js['user']['username']
-        if track_js['title']:
-            id3info["TITLE"] = track_js['title']
-        if track_js['created_at'] and is_number(track_js['created_at']):
-            # assumes year is at the beginning
-            id3info["YEAR"] = track_js['created_at'][:4]
-        if track_js['stream_url']:
-            # id3 max size 30 chars, just include the end of the stream url
-            id3info["COMMENT"] = track_js['stream_url'][-30:]
-        if track_js['genre']:
-            id3info["GENRE"] = track_js['genre']
     except InvalidTagError, message:
         print "Invalid ID3 tag:", message
     else:
-        try:    
-            # closing no longer necessary, handled by id3 library
-            file_obj.close()
-        except Exception, e:
-            sys.stderr.write(e)
+        file_obj.close()
+        return
+
+    #print id3info
+    if track_js['user']['username']:
+        id3info["ARTIST"] = track_js['user']['username']
+    if track_js['title']:
+        id3info["TITLE"] = track_js['title']
+    if track_js['created_at'] and is_number(track_js['created_at']):
+        # assumes year is at the beginning
+        id3info["YEAR"] = track_js['created_at'][:4]
+    if track_js['stream_url']:
+        # id3 max size 30 chars, just include the end of the stream url
+        id3info["COMMENT"] = track_js['stream_url'][-30:]
+    if track_js['genre']:
+        id3info["GENRE"] = track_js['genre']
 
 def all_done_check():
     # means the caller is the last auxillary thread left (2 = main + caller)
