@@ -8,6 +8,7 @@
 #   http://developers.soundcloud.com/docs/api/reference
 
 from Tkinter import *
+from ID3 import *
 import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math, threading, tkSimpleDialog
 # open API link using a web browser
 import webbrowser 
@@ -333,27 +334,52 @@ def dl_sc(username, start_index="0"):
             break
         zz = urllib2.urlopen(full_url)
         file_size = int(zz.info().getheaders("Content-Length")[0])
-        f = open(user_folder + "/" + c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w")
+        print user_folder
+        f = open(user_folder + "/" + c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w+")
         d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(convertSize(file_size) + " " + c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(username, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(username, 15)))
+        read_write(zz, f, file_size, username + str(i), c)
 
-        read_write(zz, f, file_size, username + str(i))
         if time_to_stop:
             break
     d("[+] Thread %s exiting, done with %s\n" % (threading.current_thread().name, username))
     all_done_check()
 
-def read_write(url_obj, file_obj, dl_block_sz, id):
+def read_write(url_obj, file_obj, dl_block_sz, id, track_js):
     global obj, time_to_stop
-    file_size_dl = 0
-    while True:
-        buffer = url_obj.read(dl_block_sz)
-        if not buffer:
-            break
-        file_size_dl += len(buffer)
-        file_obj.write(buffer)
-        if time_to_stop:
-            break
-    file_obj.close()
+    buffer = url_obj.read(dl_block_sz)
+    file_obj.write(buffer)
+    try:
+        id3info = ID3(file_obj)
+        #print id3info
+        id3info["ARTIST"] = track_js['user']['username']
+        print "uname " + track_js['user']['username']
+        id3info["TITLE"] = track_js['title']
+        print "title " + track_js['title']
+        id3info["YEAR"] = track_js['created_at'][:4]
+        print "year " + track_js['created_at'][:4]
+        id3info["COMMENT"] = track_js['stream_url']
+        print "stream " + track_js['stream_url']
+        id3info["GENRE"] = track_js['genre']
+        print "genre " + track_js['genre']
+
+
+        #if self.title: self.d["TITLE"] = self.tupleize(self.title)
+        #if self.artist: self.d["ARTIST"] = self.tupleize(self.artist)
+        #if self.album: self.d["ALBUM"] = self.tupleize(self.album)
+        #if self.year: self.d["YEAR"] = self.tupleize(self.year)
+        #if self.comment: self.d["COMMENT"] = self.tupleize(self.comment)
+        #if self.legal_genre(self.genre):
+        #    self.d["GENRE"] = self.tupleize(self.genres[self.genre])
+        #else:
+        #    self.d["GENRE"] = self.tupleize("Unknown Genre")
+        #if self.track: self.d["TRACKNUMBER"] = self.tupleize(str(self.track))
+
+        #for k, v in id3info.items():
+        #    print k, ":", v
+    except InvalidTagError, message:
+        print "Invalid ID3 tag:", message
+    # closing no longer necessary, handled by id3 library
+    #file_obj.close()
 
 def all_done_check():
     # means the caller is the last auxillary thread left (2 = main + caller)
