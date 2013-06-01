@@ -16,5 +16,6 @@ Run soundcloudpwn2.py from commandline to launch GUI
 ####To do:
 - check ID3 tags functionality
 - handle a json config file
+- decide on RainCloud as a name
 
 soundcloudpwn.py was an old iteration of this script

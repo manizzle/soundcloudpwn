@@ -34,7 +34,7 @@ DEBUG_MSG = ":debug"
 # name of the user's config file
 CONFIG_FILE = "user.config"
 # location to save music to (by default)
-MUSIC_DIR = "."
+DEFAULT_MUSIC_DIR = "."
 
 # min number of artists (w/ priv tracks) to print before shame somethings exits
 SHAME_LIMIT = 10
@@ -80,6 +80,7 @@ class App:
         self.text = ScrolledText(frame, bg='white', height=20, font="Courier")
         self.text.pack(fill=BOTH, side=LEFT, expand=True)
 
+        # defines a url in the text pane
         self.text.tag_config("hyper", foreground="blue", underline=1)
         self.text.tag_bind("hyper", "<Enter>", self._enter)
         self.text.tag_bind("hyper", "<Leave>", self._exit)
@@ -89,6 +90,9 @@ class App:
         obj = (self.text, self.master)
 
         self.button = Button(frame, text="QUIT", fg="red", command=frame.quit)
+        self.button.pack(side=RIGHT)
+
+        self.button = Button(frame, text="Config", fg="red", command=lambda : self.config(self.master))
         self.button.pack(side=RIGHT)
 
         self.button = Button(frame, text="About", fg="red", command=self.about)
@@ -110,7 +114,7 @@ class App:
         self.cancel.pack(side=LEFT)
         
         self.about()
-        load_user_configs(master)
+        load_user_configs()
 
 
     def shamez(self, all_the_things):
@@ -162,7 +166,14 @@ class App:
             sys.stderr.write("API\n")
         self.text.insert(END, "API", ("hyper"))
         self.text.insert(END, "\n")
+
+    def config(self, master):
+        global user_configs
+        user_configs = {}
+        query_user_configs(master)
         
+    # handles web links in the text pane
+    # TODO: check text at mark, make url decisions based on that (if we want to add more links in the future)
     def _exit(self, event):
         self.text.config(cursor="")
     def _enter(self, event):
@@ -190,35 +201,33 @@ def d(st, id=None):
 
 def query_user_configs(master):
     global user_configs
-    # preserve configs from previous config file
-    configs_to_save = copy.deepcopy(user_configs)
-    if 'music_directory' not in user_configs:
-        user_configs['music_directory'] = askdirectory(initialdir=".", parent=master, title="Pick a music download directory") # show an "Open" dialog box and return the path to the selected file
-        # if the user actually picks a directory
-        if user_configs['music_directory']:
-            # make sure to save it to file
-            configs_to_save['music_directory'] = user_configs['music_directory']
-        else:
-            # use default
-            user_configs['music_directory'] = MUSIC_DIR
+    temp = askdirectory(initialdir=".", parent=master, title="Pick a music download directory")
+    # if the user actually picks a directory
+    if temp:
+        user_configs['music_directory'] = temp
     with open(CONFIG_FILE, "w") as f:
-        f.write(ujson.dumps(configs_to_save))
+        f.write(ujson.dumps(user_configs))
 
-def load_user_configs(master):
+def load_user_configs():
     global user_configs
     if os.path.isfile(CONFIG_FILE): 
         try: 
             f = open(CONFIG_FILE)
         except:
-            d("[E] Config file botched\n")
+            d("[E] Config file botched, try deleting user.config?\n")
             return
         buffer = ujson.loads(f.read())
-        sys.stderr.write("Loaded config: %s" % buffer)
+        #sys.stderr.write("Loaded config: %s" % buffer)
         if type(buffer) is dict:
             user_configs = buffer
         f.close()
-    # asks for non-selected options, if any
-    query_user_configs(master)
+    # fill in any unset configs
+    load_default_configs()
+
+def load_default_configs():
+    global user_configs
+    if 'music_directory' not in user_configs:
+        user_configs['music_directory'] = DEFAULT_MUSIC_DIR
 
 def get_lucky_url(name, site=None):
     base  = 'http://ajax.googleapis.com/ajax/services/search/web?v=1.0&q='
@@ -329,10 +338,13 @@ def shame(all_the_things=False, range=None):
     all_done_check()
 
 def make_artist_dir(target):
+    global user_configs
+    # remove crazy characters for artist's folder
     cleaned = clean(target)
-    if not os.path.isdir(cleaned):
+    full_path = os.path.normcase(user_configs['music_directory'] + "/" + cleaned)
+    if not os.path.isdir(os.path.normcase(user_configs['music_directory'] + "/" + cleaned)):
         d("[+] Making new directory " + cleaned + "\n")
-        os.mkdir(cleaned)
+        os.mkdir(full_path)
     else:
         d("[+] Using existing directory " + cleaned + "\n")
     return cleaned            
@@ -366,7 +378,7 @@ def dl_sc(username, start_index="0"):
         d("[+] Thread %s exiting, No tracks found\n" % threading.current_thread().name)
         all_done_check()
         return []
-    user_folder = (make_artist_dir(username))
+    artist_folder = (make_artist_dir(username))
     for i,c in enumerate(tracks):
         if int(i) < (int(start_index) - 1):
             continue
@@ -375,7 +387,8 @@ def dl_sc(username, start_index="0"):
             break
         zz = urllib2.urlopen(full_url)
         file_size = int(zz.info().getheaders("Content-Length")[0])
-        f = open(user_folder + "/" + c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w+")
+        # normalizes path for cross compatibility
+        f = open(os.path.normcase(user_configs['music_directory'] + "/" + artist_folder + "/" + c['title'].replace(" ", "_").replace("/", " ") + ".mp3"), "w+")
         d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(convertSize(file_size) + " " + c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(username, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(username, 15)))
         # read_write closes the file
         read_write(zz, f, file_size, username + str(i), c)
@@ -403,16 +416,15 @@ def read_write(url_obj, file_obj, dl_block_sz, id, track_js):
         file_obj.close()
         return
 
-    #print id3info
     if track_js['user']['username']:
         id3info["ARTIST"] = track_js['user']['username']
     if track_js['title']:
         id3info["TITLE"] = track_js['title']
-    if track_js['created_at'] and is_number(track_js['created_at']):
-        # assumes year is at the beginning
-        id3info["YEAR"] = track_js['created_at'][:4]
+    if track_js['release_year'] and is_number(track_js['release_year']):
+        # assumes year is at the beginning, soundcloud returns 
+        id3info["YEAR"] = track_js['release_year']
     if track_js['stream_url']:
-        # id3 max size 30 chars, just include the end of the stream url
+        # id3 max field size 30 chars, just include the end of the stream url
         id3info["COMMENT"] = track_js['stream_url'][-30:]
     if track_js['genre']:
         id3info["GENRE"] = track_js['genre']
