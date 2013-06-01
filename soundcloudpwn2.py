@@ -92,7 +92,7 @@ class App:
         self.button = Button(frame, text="QUIT", command=frame.quit)
         self.button.pack(side=RIGHT)
 
-        self.button = Button(frame, text="Config", command=lambda : self.config(self))
+        self.button = Button(frame, text="Config", command=lambda : self.config())
         self.button.pack(side=RIGHT)
 
         self.button = Button(frame, text="About", command=self.about)
@@ -168,10 +168,14 @@ class App:
         self.text.insert(END, "API", ("hyper"))
         self.text.insert(END, "\n")
 
-    def config(self, master):
+    def config(self):
         global user_configs
-        user_configs = {}
-        query_user_configs(master)
+        temp = askdirectory(initialdir=self.user_configs['music_directory'], parent=self.master, title="Pick a music download directory")
+        # if the user actually picks a directory
+        if temp:
+            self.user_configs['music_directory'] = temp
+        with open(CONFIG_FILE, "w") as f:
+            f.write(ujson.dumps(self.user_configs))
         
     # handles web links in the text pane
     # TODO: check text at mark, make url decisions based on that (if we want to add more links in the future)
@@ -199,14 +203,6 @@ def d(st, id=None):
     if write_to_stderr:
         sys.stderr.write(st)
     return st
-
-def query_user_configs(self):
-    temp = askdirectory(initialdir=self.user_configs['music_directory'], parent=self.master, title="Pick a music download directory")
-    # if the user actually picks a directory
-    if temp:
-        self.user_configs['music_directory'] = temp
-    with open(CONFIG_FILE, "w") as f:
-        f.write(ujson.dumps(self.user_configs))
 
 def load_user_configs():
     global user_configs
