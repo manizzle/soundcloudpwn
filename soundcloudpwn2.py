@@ -89,13 +89,13 @@ class App:
 
         obj = (self.text, self.master)
 
-        self.button = Button(frame, text="QUIT", fg="red", command=frame.quit)
+        self.button = Button(frame, text="QUIT", command=frame.quit)
         self.button.pack(side=RIGHT)
 
-        self.button = Button(frame, text="Config", fg="red", command=lambda : self.config(self.master))
+        self.button = Button(frame, text="Config", command=lambda : self.config(self))
         self.button.pack(side=RIGHT)
 
-        self.button = Button(frame, text="About", fg="red", command=self.about)
+        self.button = Button(frame, text="About", command=self.about)
         self.button.pack(side=RIGHT)
 
         self.goz = Button(frame, text="Go", command=lambda : self.go(self.master))
@@ -115,6 +115,7 @@ class App:
         
         self.about()
         load_user_configs()
+        self.user_configs = user_configs
 
 
     def shamez(self, all_the_things):
@@ -199,14 +200,13 @@ def d(st, id=None):
         sys.stderr.write(st)
     return st
 
-def query_user_configs(master):
-    global user_configs
-    temp = askdirectory(initialdir=".", parent=master, title="Pick a music download directory")
+def query_user_configs(self):
+    temp = askdirectory(initialdir=self.user_configs['music_directory'], parent=self.master, title="Pick a music download directory")
     # if the user actually picks a directory
     if temp:
-        user_configs['music_directory'] = temp
+        self.user_configs['music_directory'] = temp
     with open(CONFIG_FILE, "w") as f:
-        f.write(ujson.dumps(user_configs))
+        f.write(ujson.dumps(self.user_configs))
 
 def load_user_configs():
     global user_configs
@@ -220,6 +220,7 @@ def load_user_configs():
         #sys.stderr.write("Loaded config: %s" % buffer)
         if type(buffer) is dict:
             user_configs = buffer
+            print user_configs
         f.close()
     # fill in any unset configs
     load_default_configs()
