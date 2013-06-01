@@ -404,11 +404,13 @@ class ID3:
             else:
                 self.genre = self.find_genre(str(v))
                 if self.genre == -1:
-                    print v, "not found"
+                    # this library only supports ID3v1
+                    #sys.stderr.write("%s not found\n" % v)
                     self.genre = 255
                     self.d[k] = self.tupleize("Unknown Genre")
                 else:
-                    print self.genre, v
+                    # why would a library print things
+                    #sys.stderr.write("%s %s\n" % (self.genre, v))
                     self.d[k] = self.tupleize(str(v))
         else:
             self.__dict__[string.lower(key)] = v
