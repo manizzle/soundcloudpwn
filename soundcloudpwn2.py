@@ -8,8 +8,9 @@
 #   http://developers.soundcloud.com/docs/api/reference
 
 from Tkinter import *
+from tkFileDialog import askdirectory
 from ID3 import *
-import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math, threading, tkSimpleDialog
+import os, urllib2, sys, urllib, ujson, requests, lxml.html, random, math, threading, tkSimpleDialog, copy
 # open API link using a web browser
 import webbrowser 
 
@@ -24,12 +25,16 @@ someones_client_id = "b45b1aa10f1ac2941910a7f0d10f8e28"
 SHAME_FILE = "shame.txt"
 # where to link API to in about()
 API_REF_LINK = "http://developers.soundcloud.com/docs/api/reference"
+# whether or not to copy all messages to sterr
+write_to_stderr = False
 # show some extra messages / untested options
 debug_mode = False
 # debug string to look for in text box, typing it @ beginning (and clicking go) enables debug_mode while running
 DEBUG_MSG = ":debug"
-# whether or not to copy all messages to sterr
-write_to_stderr = False
+# name of the user's config file
+CONFIG_FILE = "user.config"
+# location to save music to (by default)
+MUSIC_DIR = "."
 
 # min number of artists (w/ priv tracks) to print before shame somethings exits
 SHAME_LIMIT = 10
@@ -39,6 +44,8 @@ time_to_stop = False
 obj = None
 # counter, increments with number of active threads to give them all unique IDs
 thread_id_ctr = 0
+# user's configuration options
+user_configs = {}
 
 
 class ScrolledText(Text):
@@ -66,7 +73,7 @@ class ScrolledText(Text):
 
 class App:
     def __init__(self, master):
-        global obj
+        global obj, user_configs
         self.master = master
         frame = Frame(master)
         frame.pack()
@@ -103,6 +110,8 @@ class App:
         self.cancel.pack(side=LEFT)
         
         self.about()
+        load_user_configs(master)
+
 
     def shamez(self, all_the_things):
         global thread_id_ctr
@@ -162,9 +171,9 @@ class App:
         webbrowser.open_new_tab(API_REF_LINK)
 
 def d(st, id=None):
+    global obj, write_to_stderr
     if time_to_stop:
         return st
-    global obj, write_to_stderr
     if obj:
         t, m = obj
         # if we are passed a screen position to write to
@@ -178,6 +187,38 @@ def d(st, id=None):
     if write_to_stderr:
         sys.stderr.write(st)
     return st
+
+def query_user_configs(master):
+    global user_configs
+    # preserve configs from previous config file
+    configs_to_save = copy.deepcopy(user_configs)
+    if 'music_directory' not in user_configs:
+        user_configs['music_directory'] = askdirectory(initialdir=".", parent=master, title="Pick a music download directory") # show an "Open" dialog box and return the path to the selected file
+        # if the user actually picks a directory
+        if user_configs['music_directory']:
+            # make sure to save it to file
+            configs_to_save['music_directory'] = user_configs['music_directory']
+        else:
+            # use default
+            user_configs['music_directory'] = MUSIC_DIR
+    with open(CONFIG_FILE, "w") as f:
+        f.write(ujson.dumps(configs_to_save))
+
+def load_user_configs(master):
+    global user_configs
+    if os.path.isfile(CONFIG_FILE): 
+        try: 
+            f = open(CONFIG_FILE)
+        except:
+            d("[E] Config file botched\n")
+            return
+        buffer = ujson.loads(f.read())
+        sys.stderr.write("Loaded config: %s" % buffer)
+        if type(buffer) is dict:
+            user_configs = buffer
+        f.close()
+    # asks for non-selected options, if any
+    query_user_configs(master)
 
 def get_lucky_url(name, site=None):
     base  = 'http://ajax.googleapis.com/ajax/services/search/web?v=1.0&q='
@@ -336,6 +377,7 @@ def dl_sc(username, start_index="0"):
         file_size = int(zz.info().getheaders("Content-Length")[0])
         f = open(user_folder + "/" + c['title'].replace(" ", "_").replace("/", " ") + ".mp3", "w+")
         d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(convertSize(file_size) + " " + c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(username, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(username, 15)))
+        # read_write closes the file
         read_write(zz, f, file_size, username + str(i), c)
 
         if time_to_stop:
@@ -357,8 +399,7 @@ def read_write(url_obj, file_obj, dl_block_sz, id, track_js):
     try:
         id3info = ID3(file_obj)
     except InvalidTagError, message:
-        print "Invalid ID3 tag:", message
-    else:
+        sys.stderr.write("Invalid ID3 tag: %s" % message)
         file_obj.close()
         return
 
@@ -384,7 +425,7 @@ def all_done_check():
     
 if __name__ == "__main__":
     root = Tk()
-    root.wm_title("%s v%s" % (APPNAME, VERSION))
+    root.wm_title("%s" % APPNAME)
     menubar = Menu(root)
 
     app = App(root)
