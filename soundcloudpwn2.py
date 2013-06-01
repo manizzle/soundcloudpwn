@@ -220,7 +220,6 @@ def load_user_configs():
         #sys.stderr.write("Loaded config: %s" % buffer)
         if type(buffer) is dict:
             user_configs = buffer
-            print user_configs
         f.close()
     # fill in any unset configs
     load_default_configs()
