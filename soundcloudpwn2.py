@@ -274,7 +274,7 @@ def get_tracks(username):
     if time_to_stop:
         return None, None
     zz_uj = ujson.loads(zz)
-    return zz_uj, whouwant
+    return zz_uj
 
 def shame(all_the_things=False, range=None):
     global time_to_stop
@@ -367,14 +367,15 @@ def shorten(string, length):
 
 def dl_sc(username, start_index="0"):
     """rip all tracks from a best-guess artist/username to a folder"""
-    global time_to_stop
-    tracks, username = get_tracks(username)
+    global time_to_stop, user_configs
+    tracks = get_tracks(username)
     numtracks = len(tracks)
     if(numtracks == 0):        
         d("[+] Thread %s exiting, No tracks found\n" % threading.current_thread().name)
         all_done_check()
         return []
-    artist_folder = (make_artist_dir(username))
+    artist_name = tracks[0]['user']['username']
+    artist_folder = (make_artist_dir(artist_name))
     for i,c in enumerate(tracks):
         if int(i) < (int(start_index) - 1):
             continue
@@ -385,13 +386,13 @@ def dl_sc(username, start_index="0"):
         file_size = int(zz.info().getheaders("Content-Length")[0])
         # normalizes path for cross compatibility
         f = open(os.path.normcase(user_configs['music_directory'] + "/" + artist_folder + "/" + c['title'].replace(" ", "_").replace("/", " ") + ".mp3"), "w+")
-        d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(convertSize(file_size) + " " + c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(username, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(username, 15)))
+        d("[+][%s/%s] %s | %s" % (str(i+1).rjust(3, '0'), str(numtracks).rjust(3, '0'), shorten(repr(convertSize(file_size) + " " + c['title'])[2:-1], 38).ljust(38, ' ') ,  "thank you %s!\n" % shorten(artist_name, 15) if c['downloadable'] else "cause %s sux!\n" % shorten(artist_name, 15)))
         # read_write closes the file
-        read_write(zz, f, file_size, username + str(i), c)
+        read_write(zz, f, file_size, artist_name + str(i), c)
 
         if time_to_stop:
             break
-    d("[+] Thread %s exiting, done with %s\n" % (threading.current_thread().name, username))
+    d("[+] Thread %s exiting, done with %s\n" % (threading.current_thread().name, artist_name))
     all_done_check()
 
 def is_number(s):
