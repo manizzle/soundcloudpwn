@@ -18,6 +18,7 @@ Run soundcloudpwn2.py from commandline to launch GUI
 
 ####To do:
 - check ID3 tags functionality
+- switch to ID3v2 (or extended v1)
 - handle a json config file
 - decide on RainCloud as a name
 
