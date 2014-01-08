@@ -24,5 +24,6 @@ Run soundcloudpwn2.py from commandline to launch GUI
 - switch to ID3v2 (or extended v1)
 - handle a json config file
 - decide on RainCloud as a name
+- use download (rather than stream) links when available
 
 soundcloudpwn.py was an old iteration of this script
